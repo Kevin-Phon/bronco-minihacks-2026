@@ -60,6 +60,7 @@ type CurrentCoordinates = {
 };
 
 type StartLocation = 'portland' | 'cal-poly-pomona' | 'current';
+type WorkspaceTab = 'plan' | 'route';
 
 const pomonaStops: Stop[] = [
   {
@@ -134,6 +135,7 @@ function MapFocus({ selected, stops, center }: { selected: number; stops: Stop[]
 }
 
 function App() {
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>('plan');
   const [start, setStart] = useState<StartLocation>('cal-poly-pomona');
   const [time, setTime] = useState(60);
   const [budget, setBudget] = useState(10);
@@ -233,11 +235,13 @@ function App() {
       setStarted(true);
       setIsGeneratedQuest(true);
       setQuestDetails(result);
+      setActiveTab('route');
       setStatus(demo ? 'Synthetic backend demo ready: these are test locations.'
         : `Your three-stop quest is ready. ${result.mode === 'ai' ? 'AI-generated activities.' : 'Basic template activities.'}`);
     } catch (error) {
       const message=error instanceof Error ? error.message : 'The quest service could not be reached. Try again.';
       setPlanningError(message);
+      setActiveTab('plan');
       setStatus(message);
       setActiveStops([]);
       setCompleted([]);
@@ -318,7 +322,31 @@ function App() {
         </div>
       </section>
 
-      <section className="planner" aria-label="Quest planner">
+      <div className="workspace-tabs" role="group" aria-label="Quest sections">
+        <button
+          className="workspace-tab"
+          type="button"
+          aria-pressed={activeTab === 'plan'}
+          onClick={() => setActiveTab('plan')}
+          data-testid="button-tab-plan"
+        >
+          <span className="workspace-tab-number">01</span>
+          <span className="workspace-tab-copy"><strong>Plan a quest</strong><small>Choose a starting point, time, and budget</small></span>
+        </button>
+        <button
+          className="workspace-tab"
+          type="button"
+          aria-pressed={activeTab === 'route'}
+          onClick={() => setActiveTab('route')}
+          data-testid="button-tab-route"
+        >
+          <span className="workspace-tab-number">02</span>
+          <span className="workspace-tab-copy"><strong>Map &amp; quests</strong><small>Explore the route and check off stops</small></span>
+          <span className="workspace-tab-count" aria-label={`${activeStops.length} quest stops`}>{activeStops.length}</span>
+        </button>
+      </div>
+
+      {activeTab === 'plan' && <section className="planner" aria-label="Quest planner">
         <div className="planner-title">
           <span className="planner-kicker">FIRST, THE BASICS</span>
           <span className="planner-note">{'Nearby places, with a little imagination.'}</span>
@@ -345,10 +373,13 @@ function App() {
             <span className="field-label"><Clock3 size={14} /> I HAVE</span>
             <span className="select-shell">
               <select id="time" value={time} onChange={(event) => setTime(Number(event.target.value))} disabled={isPlanning} data-testid="input-available-time">
+                <option value={15} disabled>15 minutes · choose 30+ for three stops</option>
                 <option value={30}>30 minutes</option>
                 <option value={45}>45 minutes</option>
                 <option value={60}>About an hour</option>
-                <option value={90}>An afternoon</option>
+                <option value={90}>About 90 minutes</option>
+                <option value={120}>2 hours</option>
+                <option value={180}>3 hours</option>
               </select>
               <ChevronDown size={15} aria-hidden="true" />
             </span>
@@ -360,7 +391,10 @@ function App() {
                 <option value={0}>$0 · no purchases</option>
                 <option value={5}>$5</option>
                 <option value={10}>$10</option>
+                <option value={15}>$15</option>
                 <option value={20}>$20</option>
+                <option value={30}>$30</option>
+                <option value={50}>$50</option>
               </select>
               <ChevronDown size={15} aria-hidden="true" />
             </span>
@@ -378,10 +412,16 @@ function App() {
             : `Choose Find my quest to load nearby places. Initial sample stops near ${location.label} are illustrative.`}
         </p>
         <button type="button" className="reset-button" onClick={() => planQuest(true)} disabled={isPlanning || isRequestingLocation} data-testid="button-backend-demo">Try synthetic backend demo</button>
-        {questDetails && <div className="side-note"><div><strong>{questDetails.title}</strong><p>{questDetails.intro}</p><ul>{questDetails.warnings.map((warning,i)=><li key={i}>{warning}</li>)}</ul></div></div>}
-      </section>
+        {status && <p className="planner-status" role="status" aria-live="polite" data-testid="status-planner-message">{status}</p>}
+      </section>}
 
-      <section className="quest-layout" aria-label="Your neighborhood quest">
+      {questDetails && <section className="quest-summary" aria-label="Generated quest">
+        <h2>{questDetails.title}</h2><p>{questDetails.intro}</p>
+        {questDetails.places_source==='snapshot' && <p>Using saved real CPP map data; live place lookup is unavailable.</p>}
+        <details><summary>Quest notes ({questDetails.warnings.length})</summary><ul>{questDetails.warnings.map((warning,i)=><li key={i}>{warning}</li>)}</ul></details>
+      </section>}
+
+      {activeTab === 'route' && <section className="quest-layout" aria-label="Your neighborhood quest">
         <div className="map-column">
           <div className="section-heading map-heading">
             <div><span className="section-kicker">THE NEIGHBORHOOD</span><h2>{activeStops.length === 0
@@ -446,6 +486,13 @@ function App() {
               <div className="badge-award"><span className="award-seal"><Flag size={17} /></span><span><b>{questDetails?.badge_name ?? 'Neighborhood Scout'}</b><small>SideQuest field badge · earned today</small></span><CheckCircle2 size={19} /></div>
               <button type="button" className="reset-button" onClick={resetQuest} data-testid="button-reset-quest"><RotateCcw size={15} /> Start over</button>
             </div>
+          ) : activeStops.length === 0 ? (
+            <div className="empty-quest" role="status">
+              <MapPin size={20} aria-hidden="true" />
+              <h3>Your quest stops will appear here.</h3>
+              <p>Choose your time and budget, then find a quest to fill in this map and log.</p>
+              <button type="button" onClick={() => setActiveTab('plan')} data-testid="button-return-to-planner">Choose quest settings <ArrowRight size={14} /></button>
+            </div>
           ) : (
             <div className="stop-list">
               {activeStops.map((stop, index) => {
@@ -490,7 +537,7 @@ function App() {
           </div>}
           <p className="live-status" role="status" aria-live="polite" data-testid="status-quest-message">{status}</p>
         </div>
-      </section>
+      </section>}
       <footer className="footer">
         <div className="footer-brand"><span className="footer-mark"><Compass size={16} /></span> sidequest.</div>
         <span>Made for the time between plans.</span>

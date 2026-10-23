@@ -1,142 +1,143 @@
-# SideQuest - Bronco MiniHacks 2026
+# SideQuest — Bronco MiniHacks 2026
 
-Kevin's AI/backend for the team's local-adventure project. Python 3.10+.
-This branch includes the AI backend, an integrated Overpass places adapter, and a
-JavaScript API helper. The final frontend is on the frontend teammate's branch.
+Build a three-stop local adventure from a starting point, available time, and
+budget preference. React/Vite/Leaflet show the map, challenges, photo ideas,
+checklist and earned badge. Python/Flask fetches OSM places and asks an open-weight
+Qwen model on Groq to write creative text. Source place names and positions stay
+under server control.
 
-## Start in VS Code
+## Current status
 
-Open the repository folder, then Terminal > New Terminal:
+- The frontend's Plan a quest and Map & quests tabs connect to the Python API.
+- CPP generation was verified with live AI and a real saved OSM campus extract.
+- Public Overpass endpoints timed out or returned gateway errors during testing.
+  Live lookup for Portland/arbitrary locations remains dependent on those services.
+- The CPP fallback is labeled **AI QUEST · SNAPSHOT**, not live place lookup or
+  synthetic demo. It expires 24 hours after retrieval and applies only within
+  100 m of the CPP preset. The timestamp and source are disclosed in quest notes.
+- A separate **Try synthetic backend demo** button tests the interface without
+  Groq or Overpass. Synthetic stops are test positions, not real destinations.
+- Failed generation shows an error beside the planner and clears old sample stops.
+- No public deployment is configured. Localhost on one computer is not reachable
+  from a teammate's phone or laptop.
+
+## Setup
+
+Requirements: Python 3.10+, Node 24 recommended (tested with 24.19), and pnpm.
+The TypeScript test command needs Node 22.18 or later. System Node 20.11 is too old.
+
+From the repository root:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements-dev.txt
-python -m backend.app
+pnpm install --ignore-scripts --frozen-lockfile
 ```
 
-If `.venv` is already installed, just activate it and run the last command.
-Open http://127.0.0.1:5050 for the **Backend Check** page.
-Click **Check configuration**, then **Run synthetic demo**. Neither action calls Groq.
-The diagnostic page is not the final product UI.
+Keep the existing package-release-age policy. macOS native packages are enabled.
+Project lifecycle scripts are skipped by the install command above.
 
-## Configure live AI
-
-Create a key in https://console.groq.com/keys and paste it directly into the
-local `.env` file using VS Code:
+For live AI, copy `.env.example` to `.env` and set values locally in VS Code:
 
 ```dotenv
 GROQ_API_KEY=your_actual_key
 GROQ_MODEL=qwen/qwen3.8-27b
 ```
 
-If `.env` does not exist, copy `.env.example` to `.env`. Restart the server after
-changing it. Do not paste keys into chat, browser request JSON, screenshots or Git.
-`/api/health` reports only whether a nonempty key exists, not whether Groq accepts it.
-Actual generation may consume the account's Groq quota.
+Never commit the key or put it in frontend code. `.env`, `.venv`, Node dependencies,
+local caches and build outputs are ignored by Git. Restart Python after changing
+configuration. A key is unnecessary for basic template or synthetic demo mode.
 
-Model: `qwen/qwen3.8-27b` (Qwen 3.8 27B hosted by Groq), configurable with GROQ_MODEL.
-The original Llama 3.1 choice was unavailable in the verified account on October 23;
-this replacement passed a live JSON check. Qwen runs with reasoning_effort=none.
-The backend uses JSON Object Mode, validates output locally, retries invalid
-output once, and returns labeled basic mode on provider errors or missing key.
-Basic/demo output is not proof of AI prize eligibility: demonstrate a real AI call.
+## Run the whole app
 
-## Integrate with the team
+Terminal 1, from the repository root:
 
-See [backend handoff](docs/BACKEND_HANDOFF.md) for the exact API and places interface.
-The teammate's Overpass collector has been adapted into `backend/places.py`.
-Person 3 can import `generateQuest` from `overpass-js/overpass.js` or call
-`POST /api/quest` with coordinates, minutes and budget. Configure a Vite `/api`
-proxy to port 5050. Names and coordinates come from OSM; AI adds creative text.
-The JS helper no longer queries Overpass directly or returns invented fallback places.
-Supplied normalized places are still supported for testing/separate providers.
+```bash
+source .venv/bin/activate
+python -m backend.app
+```
 
-## Verify
+Terminal 2, from the repository root:
+
+```bash
+pnpm --filter @workspace/sidequest dev
+```
+
+Open **http://127.0.0.1:5173/**. Vite proxies `/api` to Flask on port 5050.
+The Python diagnostic page is http://127.0.0.1:5050/.
+Use `SIDEQUEST_BACKEND_URL` to override the proxy target during local testing.
+The Node/Express API scaffold is retained from the frontend project; Flask serves
+the quest API used by this app.
+
+## Test it
+
+1. Choose **Try synthetic backend demo**. The app opens Map & quests with three
+   explicitly synthetic stops. Reveal a photo idea and complete all three stops
+   to earn the returned badge. Start over resets checklist progress.
+2. Return to Plan a quest. Choose **Cal Poly Pomona campus**, **45 minutes**, and
+   **$0**, then Find my quest. During an outage the saved campus extract allows
+   live AI generation with `places_source: snapshot` while that extract is valid.
+3. Check the top mode label and Quest notes. `ai` means validated live model text;
+   `basic` means template fallback; `demo` means synthetic test data. Place sources
+   distinguish live, cached, snapshot and supplied data.
+4. An unavailable location must show a planner error, not a newly generated sample
+   route. Real geolocation remains opt-in; phone use needs a suitable HTTPS host.
+
+Automated checks:
 
 ```bash
 python -m pytest -q
-python scripts/smoke_test.py
+pnpm --filter @workspace/sidequest test
+node --test overpass-js/overpass.test.js
+pnpm --filter @workspace/sidequest typecheck
+pnpm --filter @workspace/sidequest build
 ```
 
-Run the smoke command in a second terminal while the server runs. It checks real
-local HTTP health and the explicit synthetic demo, without internet services.
-For a live check, save a JSON request with coordinates, minutes and budget (see
-the handoff), then run:
+With Python running, `python scripts/smoke_test.py` checks health and the synthetic
+HTTP flow. `--live-request /absolute/path/request.json` additionally calls Groq
+and requires AI mode; it can consume account quota. `/api/health` checks key
+presence, not validity or service availability.
 
-```bash
-python scripts/smoke_test.py --live-request /absolute/path/to/request.json
-```
+## API and limitations
 
-That live command calls the configured Groq account and fails if it receives
-fallback instead of `mode: ai`. It does not print the key or full provider errors.
+See [backend handoff](docs/BACKEND_HANDOFF.md) for request/response fields.
+`POST /api/quest` accepts numeric `lat`, `lon`, integer `minutes`, and `budget`.
+The backend selects a feasible trio, prefers category variety and shorter rough
+return loops, and preserves source facts. The model supplies titles, activities,
+photo prompts and badge names. Invalid output gets one retry, then basic fallback.
+Common English purchase directives in the intro/activities are rejected; this is
+an additional limited guard, not a full semantic guarantee. Review generated text.
 
-## Current limitations
+Activities require no purchase, but fees, hours, public access and accessibility
+are not verified. Unknown costs are not represented as zero. The route is a rough
+distance estimate, not pedestrian directions. Checklist completion is self-reported;
+no photo upload, account system, shared progress or persistent badges are implemented.
+Exactly three stops are generated; choose 30+ minutes to allow activities and walking.
+POI caches do not make map tiles or AI inference available offline.
 
-- Final frontend wiring and public hosting are still needed.
-- Overpass is a public external service and may be unavailable. We observed live
-  request timeouts during this integration; live Overpass remains unreliable on this connection. CPP now has a real OSM snapshot fallback, explicitly labeled `snapshot`, usable for 24 hours after retrieval.
-- Search includes named nodes and areas, balances categories and returns up to 15
-  candidates within 250-1500 m depending on duration. Unknown fees/access stay unknown.
-- POI responses cache for 10 minutes. On lookup failure, a matching area cache up
-  to 24 hours old can be used with `places_source: stale_cache` and a warning.
-  Cache files are local and ignored by Git. Without a matching cache, return 503;
-  for the CPP preset a verified snapshot may be used, with source and age disclosed. Other locations still return 503 without matching data. Synthetic data requires explicitly choosing demo mode.
-- Override the server-side `OVERPASS_URL` only with a trusted interpreter URL.
-  Default: https://overpass.private.coffee/api/interpreter.
-- Exactly 3 stops. Input time 5-240 minutes; budget 0-10000 USD (preference only).
-- No mandatory purchase activities; known paid/private places are excluded.
-- Stop selection checks ordered triples for a feasible time estimate, prefers
-  category variety, then shorter loops. Each place must be within 2 km. A rough
-  return-to-start distance estimate plus five minutes per stop must fit the
-  request. This is not pedestrian routing.
-- Unknown fees/access/hours are not represented as verified facts.
-- Synthetic demo positions/names are examples, not verified campus destinations.
-- Fallback JSON does not cache map tiles, so it does not make the entire app offline.
-- Backend binds localhost, debugger off. Use a production server and HTTPS for a
-  deployment; a phone cannot reach this laptop's localhost address.
+The timestamped [CPP snapshot](data/cpp_osm_snapshot.json) includes 15 real OSM
+POIs. Node coordinates come from OSM; area positions are derived bounding-box
+centers, not entrances. It is a one-time saved extract, not a runtime call to the
+OSM editing API. Refresh from a verified read-only extract when service returns.
 
-## Credits and licenses
+## Credits, licenses and AI disclosure
 
-Our project code: MIT, see LICENSE.
-Current model: [Qwen3.8-27B](https://huggingface.co/Qwen/Qwen3.8-27B),
-under [Apache-2.0](https://huggingface.co/Qwen/Qwen3.8-27B/blob/main/LICENSE).
-The model license is separate from our MIT code license. No model weights are distributed here.
-If switching to Llama, update credits and comply with its model-specific license.
-Groq hosts inference. Flask, Pydantic, groq-python, python-dotenv, pytest and HTTPX
-are used for the API, validation and tests; their upstream licenses remain applicable.
+- Project code: MIT, see [LICENSE](LICENSE).
+- Model: [Qwen3.8-27B](https://huggingface.co/Qwen/Qwen3.8-27B),
+  [Apache-2.0 terms](https://huggingface.co/Qwen/Qwen3.8-27B/blob/main/LICENSE),
+  hosted by Groq. No weights are distributed. The original Llama choice was
+  unavailable to the configured account; update credits if switching models.
+- Map data and snapshot: © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright),
+  ODbL-1.0, separate from the MIT code license. Visible map attribution is retained.
+- Libraries: React, Vite, Leaflet/react-leaflet, Tailwind CSS, Lucide, Flask,
+  Pydantic, groq-python, python-dotenv, HTTPX and pytest; upstream licenses apply.
+- Places integration adapts Berserk_Alert's original Overpass collector. Calvin
+  Truong's frontend layout, tabs and styles are preserved.
+- Codex assisted with backend/integration code, debugging, docs and tests. Other
+  teammates should add their own AI-tool disclosures and contribution details.
 
-Show visible OpenStreetMap contributor attribution in the frontend and follow [ODbL data terms](https://www.openstreetmap.org/copyright)
-including any redistributed cache. Add Leaflet/tile-provider credits
-when those components are added.
-
-AI tool disclosure: Codex assisted with backend planning, implementation,
-documentation and automated tests. Team members should review and understand the
-code, document their contributions, and disclose additional AI tools used.
-
-Overpass integration credit: adapted from Berserk_Alert's `overpass-js/overpass.js`
-collector on main (commit c4b3830). The server now handles normalization/caching;
-the browser helper exports calls to the shared API. No real-world fallback POI
-list is bundled: main's fallback_pois.json contained a design prompt, not POI records.
-
-
-## CPP real-data fallback
-
-`data/cpp_osm_snapshot.json` contains 15 real OSM POIs retrieved 2026-10-23,
-with original OSM IDs and node coordinates. Way coordinates are derived bounding-box
-centers, not verified entrances. During an Overpass outage, this snapshot is used
-only within 100 m of the CPP preset and no more than 24 hours after its timestamp;
-places must still pass the requested search radius/access/fee filters.
-The response reports `places_source: snapshot` and a timestamped warning.
-Creative text is still generated live when Groq is available. This does not prove
-live Overpass works or provide cached data for Portland/arbitrary user locations.
-
-This is a one-time saved extract, not a recurring call to the OSM editing API.
-Refresh from a verified read-only Overpass extract when connectivity returns.
-The redistributed data is © OpenStreetMap contributors, licensed under ODbL-1.0,
-separate from the project's MIT code license. Source and license URLs are included
-in the JSON. See https://www.openstreetmap.org/copyright.
-
-Common English purchase directives in AI activity text are rejected and retried;
-repeated violations return basic mode. This is a limited keyword guard, not a
-complete semantic guarantee. Human review of generated activities remains needed.
+The [original team design draft](docs/TEAM_DESIGN_DRAFT.md) is preserved as a
+historical document; its TODOs and old run commands are not the current setup.
+The [local test record](docs/LOCAL_INTEGRATION_TEST.md) records verification and
+known service limitations. The original UI design prompt is preserved separately.

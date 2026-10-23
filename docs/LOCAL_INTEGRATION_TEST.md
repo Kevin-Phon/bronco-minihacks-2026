@@ -83,3 +83,26 @@ show a planner alert, NO QUEST GENERATED, and zero sample markers.
 TypeScript check and production build passed after the UI changes.
 The keyword guard covers both intro and stop/photo text; it remains a limited
 English-text check, not a complete semantic guarantee.
+
+## Main integration for team review
+
+Merged main 0d01405 (frontend layout commit 267ed47) into the tested integration.
+Preserved Plan a quest / Map & quests tabs, larger responsive map, empty state,
+and expanded settings. Successful backend generation opens the route tab;
+failed generation stays in the planner with a visible alert. Generated title,
+intro and expandable quest notes are available with either tab.
+
+Ruling: the 15-minute option is disabled because three five-minute activities
+leave no time for walking; 30+ minute settings remain available. Existing backend
+limits and rough-time checks remain unchanged.
+
+Root README now explains setup and operation of both parts. The misleading
+fallback_pois.json design prompt was moved individually to docs/UI_DESIGN_PROMPT.json;
+it was never usable POI data. Original project drafts and Express scaffold are
+retained. No .env, installed dependencies, local caches, build outputs, or user's
+unrelated LICENSE edit are included.
+
+A pnpm dependency-state check requested module-directory replacement after the
+frontend manifest changed. It was aborted without removal; existing dependencies
+were retained, and direct Node/TypeScript/Vite commands verified the merge.
+A fresh dependency install in the main VS Code checkout is checked separately.
