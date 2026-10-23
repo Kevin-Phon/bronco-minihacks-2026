@@ -148,6 +148,7 @@ function App() {
   const [isGeneratedQuest, setIsGeneratedQuest] = useState(false);
   const [status, setStatus] = useState('');
   const [questDetails, setQuestDetails] = useState<QuestResponse | null>(null);
+  const [planningError, setPlanningError] = useState('');
 
   const currentMapCenter = useMemo<[number, number]>(
     () => currentCoordinates
@@ -219,6 +220,7 @@ function App() {
     }
     const [lat, lon] = location.mapCenter;
     setIsPlanning(true);
+    setPlanningError('');
     setStatus(demo ? 'Loading the synthetic backend demo…' : 'Finding nearby places and writing your quest…');
     try {
       const result = await requestQuest({lat, lon, minutes:time, budget}, demo);
@@ -234,7 +236,16 @@ function App() {
       setStatus(demo ? 'Synthetic backend demo ready: these are test locations.'
         : `Your three-stop quest is ready. ${result.mode === 'ai' ? 'AI-generated activities.' : 'Basic template activities.'}`);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : 'The quest service could not be reached. Try again.');
+      const message=error instanceof Error ? error.message : 'The quest service could not be reached. Try again.';
+      setPlanningError(message);
+      setStatus(message);
+      setActiveStops([]);
+      setCompleted([]);
+      setRevealed([]);
+      setSelected(0);
+      setStarted(false);
+      setIsGeneratedQuest(false);
+      setQuestDetails(null);
     } finally {
       setIsPlanning(false);
     }
@@ -256,6 +267,7 @@ function App() {
     setStarted(false);
     setIsGeneratedQuest(false);
     setQuestDetails(null);
+    setPlanningError('');
     setStatus(`Showing the fixed demo route near ${nextLocation.label}.`);
   };
 
@@ -287,7 +299,7 @@ function App() {
           <span>sidequest<span className="brand-period">.</span></span>
         </a>
         <div className="topbar-right">
-          <span className="demo-chip"><span className="demo-dot" /> {questDetails ? `${questDetails.mode.toUpperCase()} QUEST · ${questDetails.places_source.toUpperCase()}` : 'SAMPLE · FIXED STOPS'}</span>
+          <span className="demo-chip"><span className="demo-dot" /> {planningError ? 'NO QUEST GENERATED' : questDetails ? `${questDetails.mode.toUpperCase()} QUEST · ${questDetails.places_source.toUpperCase()}` : 'SAMPLE · FIXED STOPS'}</span>
           <span className="avatar-button" aria-label="SideQuest demo">SQ</span>
         </div>
       </header>
@@ -357,6 +369,9 @@ function App() {
             {isPlanning ? 'Finding quests…' : started ? 'Replan my quest' : 'Find my quest'} <ArrowRight size={17} />
           </button>
         </div>
+        {planningError && <p role="alert" data-testid="error-quest-generation" style={{color:'#8b3022',border:'1px solid currentColor',padding:'12px',borderRadius:'8px'}}>
+          <strong>Could not create a quest.</strong> {planningError} No new stops were generated. For the campus backup, choose Cal Poly Pomona campus.
+        </p>}
         <p className="fixture-note" data-testid="text-demo-disclaimer">
           <span className="fixture-pin" /> {start === 'current'
             ? 'Your coordinates go to the quest backend only after you tap “Find my quest”.'
@@ -369,10 +384,10 @@ function App() {
       <section className="quest-layout" aria-label="Your neighborhood quest">
         <div className="map-column">
           <div className="section-heading map-heading">
-            <div><span className="section-kicker">THE NEIGHBORHOOD</span><h2>{start === 'current' && activeStops.length === 0
-              ? isGeneratedQuest ? 'No quests found nearby.' : 'Location centered, quests next.'
+            <div><span className="section-kicker">THE NEIGHBORHOOD</span><h2>{activeStops.length === 0
+              ? planningError ? 'No quest generated yet.' : 'Choose a location to begin.'
               : `${activeStops.length} stops, one good loop.`}</h2></div>
-            <div className="map-legend"><span className="legend-dot" /> {isGeneratedQuest ? 'YOUR QUESTS' : start === 'current' ? 'YOUR LOCATION' : 'DEMO STOPS'}</div>
+            <div className="map-legend"><span className="legend-dot" /> {planningError ? 'NO STOPS' : isGeneratedQuest ? 'YOUR QUESTS' : start === 'current' ? 'YOUR LOCATION' : 'DEMO STOPS'}</div>
           </div>
           <div className="map-frame" data-testid="map-quest">
             <MapContainer center={location.mapCenter} zoom={15} scrollWheelZoom={false} zoomControl={true} className="quest-map" aria-label={`Interactive quest map of ${location.mapLabel}`}>
@@ -468,11 +483,11 @@ function App() {
               })}
             </div>
           )}
-          <div className="quest-totals">
+          {activeStops.length>0 && <div className="quest-totals">
             <span><Clock3 size={14} /> {questDetails ? `${questDetails.requested_minutes} MIN AVAILABLE` : `ABOUT ${estimatedTime} MIN`}</span><i />
             <span><Wallet size={14} /> {questDetails ? 'NO PURCHASE REQUIRED · FEES UNKNOWN' : `UP TO $${estimatedCost}`}</span>
             <span className="totals-foot">{questDetails ? questDetails.mode.toUpperCase() : 'SAMPLE ESTIMATE'}</span>
-          </div>
+          </div>}
           <p className="live-status" role="status" aria-live="polite" data-testid="status-quest-message">{status}</p>
         </div>
       </section>

@@ -141,3 +141,20 @@ def test_selection_uses_feasible_later_stops_instead_of_rejecting():
                 for i,lat,category in [(1,34.0573,'culture'),(2,34.0574,'food'),
                                       (3,34.0624,'historic'),(4,34.0575,'park')]]
     assert {p.place_id for p in select_places(request,candidates)}=={'1','2','4'}
+
+
+@pytest.mark.parametrize('purchase_field', ['challenge','intro'])
+def test_purchase_instruction_is_retried_then_replaced_with_basic(preferences,places,purchase_field):
+    calls=[]
+    def completion(messages):
+        calls.append(1)
+        payload=json.loads(output())
+        if purchase_field=='intro':
+            payload['intro']='Buy a coffee before starting your quest.'
+        else:
+            payload['stops'][0]['challenge']='Order a standard drink and observe the street.'
+        return json.dumps(payload)
+    quest=generate_quest(preferences,places,completion)
+    assert len(calls)==2
+    assert quest.mode=='basic'
+    assert all('order a' not in s.challenge.lower() for s in quest.stops)

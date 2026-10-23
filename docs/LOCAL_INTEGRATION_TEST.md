@@ -54,3 +54,32 @@ The current test frontend proxies to the original project's running backend on 5
 - Obtain a successful real Overpass response and verify a live AI quest plus a matching-location cache retry.
 - Coordinate these fixes with the frontend teammate before publishing to a team branch.
 - Verify geolocation on the intended HTTPS host and phone layout before presenting.
+
+
+## Campus outage repair
+
+Confirmed ordinary OSM HTTPS connectivity succeeds, while private.coffee
+read-timeouts, main Overpass rejects a status request/queries time out, and
+VK Overpass returns 504 even for a small query. No code change can guarantee
+availability of those public services on this connection.
+
+A one-time bounded OSM response was successfully retrieved and filtered into
+15 attributed real CPP POIs. The app never calls the editing API at runtime.
+During outages, a matching campus request can use that saved extract for up to
+24 hours. Source remains snapshot, with an explicit timestamp warning.
+Failed lookup for other locations clears sample stops and shows a planner alert.
+
+73 Python tests and 9 Node tests cover the changes. The live AI browser check
+returned AI QUEST · SNAPSHOT with Starbucks, Japanese Garden and The Patio.
+That test also revealed a purchase instruction; a regression test, prompt update,
+and limited English purchase-directive guard now reject/retry that behavior.
+
+
+Final acceptance after the purchase-guard correction: CPP, 45 minutes, $0 returned
+AI QUEST · SNAPSHOT, title Urban Contrast Walk, three real OSM stops (Starbucks,
+Japanese Garden, The Patio), and observation-only challenges. The intro also
+explicitly required no entries or purchases. A Portland failure was verified to
+show a planner alert, NO QUEST GENERATED, and zero sample markers.
+TypeScript check and production build passed after the UI changes.
+The keyword guard covers both intro and stop/photo text; it remains a limited
+English-text check, not a complete semantic guarantee.

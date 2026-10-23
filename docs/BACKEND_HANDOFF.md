@@ -145,7 +145,7 @@ Render unknown cost as "No purchase required; admission unknown" and use
 `requested_minutes` as the user's preference, not a measured route duration.
 Reset checked stops when a new quest is loaded; use `badge_name` at completion.
 Show `mode`, `places_source` and warnings. Map/data attribution must be visible.
-`places_source` values: live, cache, stale_cache, supplied, provider, demo.
+`places_source` values: live, cache, stale_cache, supplied, provider, demo, snapshot.
 
 For local Vite, add this entry inside the existing `server` configuration:
 
@@ -155,3 +155,17 @@ proxy: { '/api': 'http://127.0.0.1:5050' }
 
 This does not deploy the Python server. Public hosting needs same-origin HTTPS
 routing to a production backend. Frontend package scripts have not been run here.
+
+
+## Campus outage fix
+
+The CPP preset can now use a real saved OSM extract when live Overpass fails.
+Source is `snapshot`, never `live` or `demo`. It expires 24 hours after retrieval,
+requires the request center within 100 m of the preset, and still filters places
+by the requested radius. Preserve its timestamped warning in the frontend.
+Portland and arbitrary locations still need a working live provider or their own
+matching cache. The integration app uses backend port 5051 during local testing;
+normal default configuration remains port 5050.
+
+Failed generation now clears old sample stops and shows an alert by the planner.
+A failed request cannot leave a fixed sample route looking like a new result.

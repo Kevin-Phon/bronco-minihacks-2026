@@ -65,7 +65,7 @@ class QuestStop(Place):
 class QuestResponse(StrictModel):
     mode: Literal['ai', 'basic', 'demo']
     model: str | None = None
-    places_source: Literal['live', 'cache', 'stale_cache', 'supplied', 'provider', 'demo'] = 'supplied'
+    places_source: Literal['live', 'cache', 'stale_cache', 'supplied', 'provider', 'demo', 'snapshot'] = 'supplied'
     title: str
     intro: str
     badge_name: str

@@ -25,7 +25,7 @@ function coordinate(value:unknown,limit:number): value is number {
 }
 function validQuest(value:unknown): value is QuestResponse {
   if(!record(value) || !['ai','basic','demo'].includes(String(value.mode)) ||
-    !['live','cache','stale_cache','supplied','provider','demo'].includes(String(value.places_source)) ||
+    !['live','cache','stale_cache','supplied','provider','demo','snapshot'].includes(String(value.places_source)) ||
     !(value.model===null || text(value.model)) ||
     !text(value.title) || !text(value.intro) || !text(value.badge_name) ||
     !Array.isArray(value.warnings) || !value.warnings.every(text) ||

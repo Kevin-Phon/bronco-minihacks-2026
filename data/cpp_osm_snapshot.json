@@ -1,0 +1,149 @@
+{
+  "fetched_at": 1792788556.8668559,
+  "center": {
+    "lat": 34.0572,
+    "lon": -117.8214
+  },
+  "source_url": "https://api.openstreetmap.org/api/0.6/map.json?bbox=-117.827,34.052,-117.816,34.062",
+  "attribution": "Map data \u00a9 OpenStreetMap contributors",
+  "license": "ODbL-1.0",
+  "license_url": "https://www.openstreetmap.org/copyright",
+  "area_coordinates": "Area positions are bounding-box centers computed from OSM way nodes, not entrances or walking directions.",
+  "places": [
+    {
+      "place_id": "node/12375159319",
+      "name": "Starbucks",
+      "lat": 34.0575716,
+      "lon": -117.8214366,
+      "category": "food",
+      "fee": "unknown",
+      "access": "unknown"
+    },
+    {
+      "place_id": "way/430004128",
+      "name": "Japanese Garden",
+      "lat": 34.05962295,
+      "lon": -117.8203494,
+      "category": "park",
+      "fee": "unknown",
+      "access": "unknown"
+    },
+    {
+      "place_id": "node/12375149347",
+      "name": "The Patio",
+      "lat": 34.056301,
+      "lon": -117.8212326,
+      "category": "food",
+      "fee": "unknown",
+      "access": "unknown"
+    },
+    {
+      "place_id": "way/50439407",
+      "name": "Voorhis Alumni Park",
+      "lat": 34.0599653,
+      "lon": -117.8187141,
+      "category": "park",
+      "fee": "unknown",
+      "access": "unknown"
+    },
+    {
+      "place_id": "node/12375149346",
+      "name": "Hivachi-San",
+      "lat": 34.0559852,
+      "lon": -117.8212546,
+      "category": "food",
+      "fee": "unknown",
+      "access": "unknown"
+    },
+    {
+      "place_id": "way/234159684",
+      "name": "Rose Garden",
+      "lat": 34.06081315,
+      "lon": -117.8203384,
+      "category": "park",
+      "fee": "unknown",
+      "access": "unknown"
+    },
+    {
+      "place_id": "node/12375149342",
+      "name": "Saddles Cafe",
+      "lat": 34.0558762,
+      "lon": -117.8210765,
+      "category": "food",
+      "fee": "unknown",
+      "access": "unknown"
+    },
+    {
+      "place_id": "way/1489674074",
+      "name": "BioTrek Garden",
+      "lat": 34.05719605,
+      "lon": -117.8263874,
+      "category": "park",
+      "fee": "unknown",
+      "access": "unknown"
+    },
+    {
+      "place_id": "node/12375154700",
+      "name": "TaKorean",
+      "lat": 34.0577648,
+      "lon": -117.8230194,
+      "category": "food",
+      "fee": "unknown",
+      "access": "unknown"
+    },
+    {
+      "place_id": "way/436658800",
+      "name": "Boltz Courtyard",
+      "lat": 34.05762365,
+      "lon": -117.82670815,
+      "category": "park",
+      "fee": "unknown",
+      "access": "unknown"
+    },
+    {
+      "place_id": "node/12375154698",
+      "name": "Fresh Escape",
+      "lat": 34.0577267,
+      "lon": -117.8232468,
+      "category": "food",
+      "fee": "unknown",
+      "access": "unknown"
+    },
+    {
+      "place_id": "node/13928142650",
+      "name": "Lollicup Boba & Tea",
+      "lat": 34.0568179,
+      "lon": -117.8187636,
+      "category": "food",
+      "fee": "unknown",
+      "access": "unknown"
+    },
+    {
+      "place_id": "way/766588165",
+      "name": "Building 72 - Centerpointe Dining Commons",
+      "lat": 34.056778949999995,
+      "lon": -117.81876969999999,
+      "category": "food",
+      "fee": "unknown",
+      "access": "unknown"
+    },
+    {
+      "place_id": "node/12511740333",
+      "name": "Restaurant at Kellog West",
+      "lat": 34.0564946,
+      "lon": -117.8247601,
+      "category": "food",
+      "fee": "unknown",
+      "access": "unknown"
+    },
+    {
+      "place_id": "node/13928118871",
+      "name": "Element Coffee & Food",
+      "lat": 34.0615839,
+      "lon": -117.8197562,
+      "category": "food",
+      "fee": "unknown",
+      "access": "unknown"
+    }
+  ]
+}

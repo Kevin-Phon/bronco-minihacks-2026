@@ -139,3 +139,37 @@ def test_requests_during_cooldown_do_not_postpone_recovery(tmp_path,preferences)
         now[0]=1031
         assert service(preferences).source=='live'
     assert len(calls)==2
+
+
+def write_snapshot(path, preferences, stamp=1000):
+    from backend.places import normalize_places
+    places=normalize_places(osm_data(),preferences)
+    path.write_text(json.dumps({'fetched_at':stamp,'center':{'lat':preferences.lat,'lon':preferences.lon},
+                               'places':[p.model_dump() for p in places]}))
+
+
+def test_real_snapshot_fallback_is_explicit_and_only_for_matching_area(tmp_path,preferences):
+    snapshot=tmp_path/'snapshot.json'; write_snapshot(snapshot,preferences)
+    with httpx.Client(transport=httpx.MockTransport(lambda _:httpx.Response(504))) as http:
+        service=OverpassService(client=http,cache_path=tmp_path/'cache.json',snapshot_path=snapshot,clock=lambda:2000)
+        batch=service(preferences)
+        assert batch.source=='snapshot'
+        assert len(batch.places)==3
+        assert any('saved' in warning for warning in batch.warnings)
+        elsewhere=preferences.model_copy(update={'lat':45.5162,'lon':-122.6808})
+        with pytest.raises(PlacesUnavailable):service(elsewhere)
+
+
+@pytest.mark.parametrize('stamp',[True, float('nan'), -100000, 3000])
+def test_invalid_or_expired_snapshot_never_becomes_live_data(tmp_path,preferences,stamp):
+    snapshot=tmp_path/'snapshot.json';write_snapshot(snapshot,preferences,stamp)
+    with httpx.Client(transport=httpx.MockTransport(lambda _:httpx.Response(504))) as http:
+        service=OverpassService(client=http,cache_path=tmp_path/'cache.json',snapshot_path=snapshot,clock=lambda:2000)
+        with pytest.raises(PlacesUnavailable):service(preferences)
+
+
+def test_partial_overpass_timeout_is_rejected_even_with_three_records(tmp_path,preferences):
+    payload={**osm_data(),'remark':'runtime error: Query timed out'}
+    with httpx.Client(transport=httpx.MockTransport(lambda _:httpx.Response(200,json=payload))) as http:
+        with pytest.raises(PlacesUnavailable):
+            OverpassService(client=http,cache_path=tmp_path/'cache.json')(preferences)

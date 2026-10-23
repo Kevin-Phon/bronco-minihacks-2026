@@ -75,13 +75,13 @@ fallback instead of `mode: ai`. It does not print the key or full provider error
 
 - Final frontend wiring and public hosting are still needed.
 - Overpass is a public external service and may be unavailable. We observed live
-  request timeouts during this integration; full live OSM-to-AI verification is pending.
+  request timeouts during this integration; live Overpass remains unreliable on this connection. CPP now has a real OSM snapshot fallback, explicitly labeled `snapshot`, usable for 24 hours after retrieval.
 - Search includes named nodes and areas, balances categories and returns up to 15
   candidates within 250-1500 m depending on duration. Unknown fees/access stay unknown.
 - POI responses cache for 10 minutes. On lookup failure, a matching area cache up
   to 24 hours old can be used with `places_source: stale_cache` and a warning.
   Cache files are local and ignored by Git. Without a matching cache, return 503;
-  synthetic data requires explicitly choosing demo mode.
+  for the CPP preset a verified snapshot may be used, with source and age disclosed. Other locations still return 503 without matching data. Synthetic data requires explicitly choosing demo mode.
 - Override the server-side `OVERPASS_URL` only with a trusted interpreter URL.
   Default: https://overpass.private.coffee/api/interpreter.
 - Exactly 3 stops. Input time 5-240 minutes; budget 0-10000 USD (preference only).
@@ -118,3 +118,25 @@ Overpass integration credit: adapted from Berserk_Alert's `overpass-js/overpass.
 collector on main (commit c4b3830). The server now handles normalization/caching;
 the browser helper exports calls to the shared API. No real-world fallback POI
 list is bundled: main's fallback_pois.json contained a design prompt, not POI records.
+
+
+## CPP real-data fallback
+
+`data/cpp_osm_snapshot.json` contains 15 real OSM POIs retrieved 2026-10-23,
+with original OSM IDs and node coordinates. Way coordinates are derived bounding-box
+centers, not verified entrances. During an Overpass outage, this snapshot is used
+only within 100 m of the CPP preset and no more than 24 hours after its timestamp;
+places must still pass the requested search radius/access/fee filters.
+The response reports `places_source: snapshot` and a timestamped warning.
+Creative text is still generated live when Groq is available. This does not prove
+live Overpass works or provide cached data for Portland/arbitrary user locations.
+
+This is a one-time saved extract, not a recurring call to the OSM editing API.
+Refresh from a verified read-only Overpass extract when connectivity returns.
+The redistributed data is © OpenStreetMap contributors, licensed under ODbL-1.0,
+separate from the project's MIT code license. Source and license URLs are included
+in the JSON. See https://www.openstreetmap.org/copyright.
+
+Common English purchase directives in AI activity text are rejected and retried;
+repeated violations return basic mode. This is a limited keyword guard, not a
+complete semantic guarantee. Human review of generated activities remains needed.

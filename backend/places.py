@@ -9,9 +9,11 @@ import json
 import os
 import time
 import threading
+import math
+from datetime import datetime, timezone
 import httpx
 from pydantic import ValidationError
-from .schemas import Place
+from .schemas import Place, QuestRequest
 from .quest_ai import distance_m
 
 USER_AGENT = 'SideQuest-MiniHacks/1.0 (+https://github.com/Kevin-Phon/bronco-minihacks-2026)'
@@ -43,7 +45,7 @@ def build_query(preferences):
 
 
 def normalize_places(data, preferences):
-    if not isinstance(data,dict) or not isinstance(data.get('elements'),list):
+    if not isinstance(data,dict) or not isinstance(data.get('elements'),list) or data.get('remark'):
         raise PlacesUnavailable('Overpass returned malformed data.')
     groups = defaultdict(list)
     seen = set()
@@ -91,8 +93,9 @@ def normalize_places(data, preferences):
 
 
 class OverpassService:
-    def __init__(self, client=None, cache_path=None, clock=time.time):
+    def __init__(self, client=None, cache_path=None, clock=time.time, snapshot_path=None):
         self.client=client
+        self.snapshot_path=Path(snapshot_path) if snapshot_path else None
         self.cache_path=Path(cache_path) if cache_path else Path(__file__).resolve().parent.parent/'data/.cache/overpass.json'
         self.clock=clock
         self.lock=threading.Lock()
@@ -104,6 +107,33 @@ class OverpassService:
             return data if isinstance(data,dict) else {}
         except (OSError,ValueError):
             return {}
+
+    def _snapshot(self, preferences):
+        if self.snapshot_path is None:
+            return None
+        try:
+            data=json.loads(self.snapshot_path.read_text())
+            stamp=data['fetched_at']
+            if isinstance(stamp,bool) or not isinstance(stamp,(int,float)) or not math.isfinite(stamp):
+                return None
+            if not 0 <= self.clock()-stamp <= 86400:
+                return None
+            center=QuestRequest(**data['center'],minutes=preferences.minutes,budget=preferences.budget)
+            if distance_m(center,preferences)>100:
+                return None
+            places=[Place.model_validate(p) for p in data['places']]
+            if not 3<=len(places)<=30 or len({p.place_id for p in places})!=len(places):
+                return None
+            places=[p for p in places if distance_m(preferences,p)<=search_radius(preferences)
+                    and p.access!='private' and p.fee!='paid']
+            if len(places)<3:
+                return None
+            saved_at=datetime.fromtimestamp(stamp,timezone.utc).isoformat(timespec='minutes')
+            return PlacesBatch(places,'snapshot',[
+                f'Live place lookup is unavailable. Using real CPP OpenStreetMap places saved {saved_at}; this is cached map data, not a live lookup.',
+            ])
+        except (OSError,ValueError,KeyError,TypeError,OverflowError):
+            return None
 
     def __call__(self, preferences):
         key=f'{preferences.lat:.4f},{preferences.lon:.4f},{search_radius(preferences)}'
@@ -160,10 +190,13 @@ class OverpassService:
                     self.retry_after=self.clock()+30
                 if saved and 0<=age<=86400:
                     return PlacesBatch(saved,'stale_cache',['Live places are unavailable; using previously fetched OSM data for this area (up to 24 hours old).'])
+                snapshot=self._snapshot(preferences)
+                if snapshot is not None:
+                    return snapshot
                 raise PlacesUnavailable('Nearby-place lookup failed or found fewer than three places. Try again later or explicitly choose the synthetic demo.') from None
 
 
-_service=OverpassService()
+_service=OverpassService(snapshot_path=Path(__file__).resolve().parent.parent/'data/cpp_osm_snapshot.json')
 
 
 def get_places(preferences):

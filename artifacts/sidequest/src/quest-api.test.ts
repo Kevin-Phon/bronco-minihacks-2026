@@ -49,3 +49,9 @@ test('rejects invalid coordinates and duplicated stop IDs before mapping',async(
     await assert.rejects(requestQuest(preferences,false,transport),/unexpected/);
   }
 });
+
+
+test('real cached campus snapshot preserves its distinct source label',async()=>{
+  const transport:typeof fetch=async()=>Response.json({...quest,places_source:'snapshot'});
+  assert.equal((await requestQuest(preferences,false,transport)).places_source,'snapshot');
+});
