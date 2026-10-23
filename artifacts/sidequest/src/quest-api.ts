@@ -29,13 +29,13 @@ function validQuest(value:unknown): value is QuestResponse {
     !(value.model===null || text(value.model)) ||
     !text(value.title) || !text(value.intro) || !text(value.badge_name) ||
     !Array.isArray(value.warnings) || !value.warnings.every(text) ||
-    !Array.isArray(value.stops) || value.stops.length!==3 ||
+    !Array.isArray(value.stops) || value.stops.length<2 || value.stops.length>5 ||
     typeof value.requested_minutes!=='number' || typeof value.requested_budget!=='number') return false;
   const stops=value.stops;
   return stops.every(s=>record(s) && text(s.place_id) && text(s.name) &&
     text(s.category) && coordinate(s.lat,90) && coordinate(s.lon,180) &&
     text(s.challenge) && text(s.photo_prompt)) &&
-    new Set(stops.map(s=>s.place_id)).size===3;
+    new Set(stops.map(s=>s.place_id)).size===stops.length;
 }
 
 export async function requestQuest(preferences:Preferences,demo=false,transport:typeof fetch=fetch):Promise<QuestResponse> {
