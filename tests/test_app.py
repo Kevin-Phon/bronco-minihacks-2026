@@ -91,3 +91,8 @@ def test_diagnostic_page_is_available(client):
     r=client.get('/')
     assert r.status_code == 200
     assert b'Backend Check' in r.data
+
+
+def test_health_reports_configured_model():
+    client = create_app({'TESTING':True,'GROQ_API_KEY':'','GROQ_MODEL':'alternate-model'}).test_client()
+    assert client.get('/api/health').json['model'] == 'alternate-model'

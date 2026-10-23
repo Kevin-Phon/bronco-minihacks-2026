@@ -92,7 +92,8 @@ def test_private_or_paid_places_are_excluded(preferences, places):
 def test_sdk_request_uses_json_mode_and_server_secret(preferences, places):
     def handler(request):
         payload = json.loads(request.content)
-        assert payload['model'] == 'llama-3.1-8b-instant'
+        assert payload['model'] == 'qwen/qwen3.8-27b'
+        assert payload['reasoning_effort'] == 'none'
         assert payload['response_format'] == {'type': 'json_object'}
         assert request.headers['authorization'] == 'Bearer test-only'
         assert 'JSON' in payload['messages'][0]['content']
@@ -116,3 +117,17 @@ def test_sdk_rate_limit_has_no_retries(preferences, places):
     assert len(hits) == 1
     assert quest.mode == 'basic'
     assert 'secret-value' not in quest.model_dump_json()
+
+
+def test_configured_model_is_reported_in_quest(preferences, places):
+    def handler(request):
+        payload = json.loads(request.content)
+        assert payload['model'] == 'qwen/qwen3.8-27b'
+        return httpx.Response(200, json={'id':'chat-2','object':'chat.completion','created':1,
+            'model':payload['model'],'choices':[{'index':0,'finish_reason':'stop',
+            'message':{'role':'assistant','content':output()}}]})
+    with httpx.Client(transport=httpx.MockTransport(handler)) as http:
+        with Groq(api_key='test-only', http_client=http, max_retries=0) as sdk:
+            quest = generate_quest(preferences, places, GroqCompletion(client=sdk, model='qwen/qwen3.8-27b'))
+    assert quest.mode == 'ai'
+    assert quest.model == 'qwen/qwen3.8-27b'

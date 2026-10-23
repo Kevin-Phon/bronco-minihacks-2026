@@ -27,6 +27,7 @@ local `.env` file using VS Code:
 
 ```dotenv
 GROQ_API_KEY=your_actual_key
+GROQ_MODEL=qwen/qwen3.8-27b
 ```
 
 If `.env` does not exist, copy `.env.example` to `.env`. Restart the server after
@@ -34,7 +35,9 @@ changing it. Do not paste keys into chat, browser request JSON, screenshots or G
 `/api/health` reports only whether a nonempty key exists, not whether Groq accepts it.
 Actual generation may consume the account's Groq quota.
 
-Model: `llama-3.1-8b-instant` (Meta Llama 3.1 8B Instruct hosted by Groq).
+Model: `qwen/qwen3.8-27b` (Qwen 3.8 27B hosted by Groq), configurable with GROQ_MODEL.
+The original Llama 3.1 choice was unavailable in the verified account on October 23;
+this replacement passed a live JSON check. Qwen runs with reasoning_effort=none.
 The backend uses JSON Object Mode, validates output locally, retries invalid
 output once, and returns labeled basic mode on provider errors or missing key.
 Basic/demo output is not proof of AI prize eligibility: demonstrate a real AI call.
@@ -80,10 +83,11 @@ fallback instead of `mode: ai`. It does not print the key or full provider error
 
 ## Credits and licenses
 
-Our project code: MIT, see LICENSE. **Built with Llama**.
-Model: [Llama 3.1 8B Instruct](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct),
-subject to the [Llama 3.1 Community License](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct/blob/main/LICENSE)
-and applicable usage terms, not our MIT project license. No model weights are distributed here.
+Our project code: MIT, see LICENSE.
+Current model: [Qwen3.8-27B](https://huggingface.co/Qwen/Qwen3.8-27B),
+under [Apache-2.0](https://huggingface.co/Qwen/Qwen3.8-27B/blob/main/LICENSE).
+The model license is separate from our MIT code license. No model weights are distributed here.
+If switching to Llama, update credits and comply with its model-specific license.
 Groq hosts inference. Flask, Pydantic, groq-python, python-dotenv, pytest and HTTPX
 are used for the API, validation and tests; their upstream licenses remain applicable.
 

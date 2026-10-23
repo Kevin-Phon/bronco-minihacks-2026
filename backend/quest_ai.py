@@ -5,7 +5,7 @@ from groq import Groq, APIError
 from pydantic import ValidationError
 from .schemas import CreativeQuest, Place, QuestRequest, QuestResponse, QuestStop
 
-MODEL = 'llama-3.1-8b-instant'
+MODEL = 'qwen/qwen3.8-27b'
 GENERAL_WARNINGS = [
     'Time is a rough distance-based estimate, not walking directions; check paths and access.',
     'Activities require no purchase. Fees, opening hours and accessibility are not verified.',
@@ -32,16 +32,18 @@ class NoSuitablePlaces(ValueError):
 
 
 class GroqCompletion:
-    def __init__(self, api_key=None, client=None):
+    def __init__(self, api_key=None, client=None, model=MODEL):
+        self.model = model
         self.client = client or Groq(api_key=api_key, timeout=10.0, max_retries=0)
         self.owns_client = client is None
 
     def __call__(self, messages):
         try:
             result = self.client.chat.completions.create(
-                model=MODEL, messages=messages,
+                model=self.model, messages=messages,
                 response_format={'type': 'json_object'}, temperature=0.6,
                 max_completion_tokens=1000,
+                **({'reasoning_effort': 'none'} if self.model == 'qwen/qwen3.8-27b' else {}),
             )
             if not result.choices or result.choices[0].finish_reason != 'stop':
                 raise ProviderUnavailable('Incomplete AI response')
@@ -92,10 +94,10 @@ def basic_content(places):
     })
 
 
-def assemble(request, places, creative, mode, warnings):
+def assemble(request, places, creative, mode, warnings, model=MODEL):
     by_id = {s.place_id: s for s in creative.stops}
     return QuestResponse(
-        mode=mode, model=MODEL if mode == 'ai' else None,
+        mode=mode, model=model if mode == 'ai' else None,
         title=creative.title, intro=creative.intro, badge_name=creative.badge_name,
         stops=[QuestStop(**p.model_dump(), challenge=by_id[p.place_id].challenge,
                          photo_prompt=by_id[p.place_id].photo_prompt) for p in places],
@@ -122,7 +124,7 @@ def generate_quest(request: QuestRequest, candidates, complete=None):
             ids = [s.place_id for s in creative.stops]
             if len(set(ids)) != 3 or set(ids) != {p.place_id for p in places}:
                 raise ValueError('Use each supplied place ID exactly once.')
-            return assemble(request, places, creative, 'ai', [])
+            return assemble(request, places, creative, 'ai', [], model=getattr(complete, 'model', MODEL))
         except ProviderUnavailable:
             break
         except (ValidationError, ValueError, TypeError):

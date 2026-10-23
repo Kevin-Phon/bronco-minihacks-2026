@@ -15,7 +15,8 @@ ROOT = Path(__file__).resolve().parent.parent
 def create_app(config=None, *, places_provider=None, completion=None):
     load_dotenv(ROOT / '.env', override=False)
     app = Flask(__name__)
-    app.config.update(MAX_CONTENT_LENGTH=65536, GROQ_API_KEY=os.getenv('GROQ_API_KEY', '').strip())
+    app.config.update(MAX_CONTENT_LENGTH=65536, GROQ_API_KEY=os.getenv('GROQ_API_KEY', '').strip(),
+                      GROQ_MODEL=os.getenv('GROQ_MODEL', MODEL).strip() or MODEL)
     if config:
         app.config.update(config)
     provider = places_provider or get_places
@@ -33,7 +34,7 @@ def create_app(config=None, *, places_provider=None, completion=None):
 
     @app.get('/api/health')
     def health():
-        return jsonify(status='ok', ai_configured=bool(app.config['GROQ_API_KEY']), model=MODEL)
+        return jsonify(status='ok', ai_configured=bool(app.config['GROQ_API_KEY']), model=app.config['GROQ_MODEL'])
 
     @app.post('/api/quest')
     def quest():
@@ -56,7 +57,7 @@ def create_app(config=None, *, places_provider=None, completion=None):
         owned_ai = None
         try:
             if ai is None and app.config['GROQ_API_KEY']:
-                owned_ai = GroqCompletion(api_key=app.config['GROQ_API_KEY'])
+                owned_ai = GroqCompletion(api_key=app.config['GROQ_API_KEY'], model=app.config['GROQ_MODEL'])
                 ai = owned_ai
             result = generate_quest(preferences, candidates, ai)
             return jsonify(result.model_dump())

@@ -56,7 +56,7 @@ Successful response (stops array contains exactly 3):
 ```json
 {
   "mode":"ai",
-  "model":"llama-3.1-8b-instant",
+  "model":"qwen/qwen3.8-27b",
   "title":"Quest title",
   "intro":"Short introduction",
   "badge_name":"Explorer",
@@ -113,3 +113,6 @@ and may need human review; schema checks are not a factual or safety guarantee.
 No key is required for basic or synthetic demo mode. Configure the key in `.env`,
 restart, and use scripts/smoke_test.py --live-request with your teammate's real data.
 No live Groq call has been verified until that command reports mode ai.
+
+## Model availability update
+The account model list excludes the original Llama choice. Qwen 3.8 27B is the working default, with Apache-2.0 model terms. GROQ_MODEL can override it; health and successful quest metadata report the configured model. Update model credits if changing it.
