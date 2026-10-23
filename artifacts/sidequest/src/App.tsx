@@ -315,10 +315,8 @@ function App() {
           <p>Good plans are overrated. Pick your window, rally your people, and see what’s just around the corner.</p>
           <div className="intro-foot"><Sparkles className="mini-stars" size={15} aria-hidden="true" /> Three tiny missions. One very good story.</div>
         </div>
-        <div className="intro-stamp" aria-hidden="true">
-          <span className="stamp-orbit">GO OUTSIDE · LOOK CLOSER · GO OUTSIDE ·</span>
-          <Compass size={48} strokeWidth={1.2} />
-          <span className="stamp-coordinates">{location.coordinateLabel[0]}<br />{location.coordinateLabel[1]}</span>
+        <div className="intro-logo">
+          <img src={`${import.meta.env.BASE_URL}logo-horizontal.png`} alt="SideQuest — turn any afternoon into an adventure" width="1400" height="400" />
         </div>
       </section>
 
