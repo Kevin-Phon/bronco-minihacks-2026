@@ -1,143 +1,104 @@
-# SideQuest — Bronco MiniHacks 2026
+# bronco-minihacks-2026
+Team project repository for CPP Bronco MiniHacks 2026.
 
-Build a three-stop local adventure from a starting point, available time, and
-budget preference. React/Vite/Leaflet show the map, challenges, photo ideas,
-checklist and earned badge. Python/Flask fetches OSM places and asks an open-weight
-Qwen model on Groq to write creative text. Source place names and positions stay
-under server control.
+# 🗺️ SideQuest
 
-## Current status
+**Turn any afternoon into an adventure.** SideQuest uses real map data and an open-weight AI model to create a short, personalized quest around you: a few nearby stops, a fun challenge at each one, and a badge when you finish.
 
-- The frontend's Plan a quest and Map & quests tabs connect to the Python API.
-- CPP generation was verified with live AI and a real saved OSM campus extract.
-- Public Overpass endpoints timed out or returned gateway errors during testing.
-  Live lookup for Portland/arbitrary locations remains dependent on those services.
-- The CPP fallback is labeled **AI QUEST · SNAPSHOT**, not live place lookup or
-  synthetic demo. It expires 24 hours after retrieval and applies only within
-  100 m of the CPP preset. The timestamp and source are disclosed in quest notes.
-- A separate **Try synthetic backend demo** button tests the interface without
-  Groq or Overpass. Synthetic stops are test positions, not real destinations.
-- Failed generation shows an error beside the planner and clears old sample stops.
-- No public deployment is configured. Localhost on one computer is not reachable
-  from a teammate's phone or laptop.
+Built in one day at **Bronco Minihacks 2026** (Cal Poly Pomona) by **TODO: Team Name**.
 
-## Setup
+> Tracks: **Travel/Exploration** · **MLH Best Open-Source AI Project**
 
-Requirements: Python 3.10+, Node 24 recommended (tested with 24.19), and pnpm.
-The TypeScript test command needs Node 22.18 or later. System Node 20.11 is too old.
+![SideQuest screenshot](TODO-screenshot.png)
 
-From the repository root:
+---
 
+## 💡 The problem
+Map apps are great at showing you *lists* of places, but they don't make exploring fun. Students, people new to an area, and anyone stuck in the same routine often:
+- don't know what's interesting nearby,
+- can't decide where to go with limited time or money, and
+- end up scrolling instead of going outside.
+
+## ✨ What SideQuest does
+1. **Tell it where you are and how much time you have.** Use your location or pick a preset spot, then choose your time, budget, and vibe (chill, foodie, artsy, adventurous).
+2. **Get a quest in seconds.** SideQuest finds real places nearby and turns them into a 3 to 5 stop route with a themed title.
+3. **Play it.** Each stop has a small challenge and a photo prompt. Check stops off as you go and watch your progress fill up.
+4. **Earn your badge.** Finish the quest to unlock a themed badge.
+
+**Example:** *"The Caffeinated Explorer"*, a 90-minute, low-budget quest starting at CPP: grab a drink at a nearby café and rate it, find the oldest-looking building on campus and snap a photo, then end at a park to spot three different birds. (TODO: replace with a real generated quest)
+
+## 🧠 How it works
+```
+You (location, time, budget, vibe)
+        │
+        ▼
+Places service  ──►  OpenStreetMap (Overpass API): real nearby cafés, parks, landmarks, art
+        │            filtered by distance and variety
+        ▼
+Quest generator ──►  Open-weight LLM (TODO: model) writes the quest as strict JSON,
+        │            using ONLY the real places it was given
+        ▼
+Validation      ──►  checks every stop exists and has valid coordinates;
+        │            retries once, falls back to a simple quest if needed
+        ▼
+App             ──►  interactive map, stop checklist, progress, badge
+```
+
+**Why it can be trusted:** the AI never invents places. It can only choose from real OpenStreetMap results, and every stop is checked in code before it reaches the map.
+
+## 🤖 Open-source AI
+- **Model:** TODO (e.g. Llama 3.1 8B Instruct by Meta, open-weight)
+- **License / terms:** TODO link (e.g. Llama 3.1 Community License)
+- **Served via:** TODO (e.g. Groq API, or Ollama locally)
+- **Role in the project:** the model is the core of SideQuest. It picks stops that fit the user's time and vibe, writes the quest story, challenges, and photo prompts, and names the badge.
+
+## 🛠️ Tech stack
+| Part | Tech |
+|---|---|
+| Frontend | TODO (e.g. React + Vite, Leaflet / react-leaflet) |
+| Backend | TODO (e.g. Node.js + Express) |
+| Map data | OpenStreetMap via Overpass API |
+| AI | TODO model + provider |
+| Map tiles | © OpenStreetMap contributors |
+
+## 🚀 Run it locally
+> TODO: confirm commands with the team once the code is merged.
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements-dev.txt
-pnpm install --ignore-scripts --frozen-lockfile
+git clone https://github.com/Kevin-Phon/bronco-minihacks-2026.git
+cd bronco-minihacks-2026
+
+# backend
+cd server
+npm install
+cp .env.example .env      # add your API key here (TODO: name of key)
+npm start                 # runs on http://localhost:3001
+
+# frontend (new terminal)
+cd client
+npm install
+npm run dev               # open the URL it prints
 ```
 
-Keep the existing package-release-age policy. macOS native packages are enabled.
-Project lifecycle scripts are skipped by the install command above.
+## 👥 Team
+| Name | Role |
+|---|---|
+| TODO | AI and backend |
+| TODO | Places data |
+| TODO | Frontend |
+| TODO | Design, docs, and demo |
 
-For live AI, copy `.env.example` to `.env` and set values locally in VS Code:
+## 🧭 What's next
+- Photo upload and sharing for each completed stop
+- Reroll a single stop you don't like
+- Shareable quest links so friends can play the same quest
+- Partnerships with local businesses and campuses to feature sponsored stops
 
-```dotenv
-GROQ_API_KEY=your_actual_key
-GROQ_MODEL=qwen/qwen3.8-27b
-```
+## 🙏 Credits and acknowledgements
+- Map data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, available under the ODbL
+- TODO: list every library and open-source project used (React, Vite, Leaflet, react-leaflet, Express, etc.)
+- TODO: model credit and license link
 
-Never commit the key or put it in frontend code. `.env`, `.venv`, Node dependencies,
-local caches and build outputs are ignored by Git. Restart Python after changing
-configuration. A key is unnecessary for basic template or synthetic demo mode.
+**AI use disclosure:** We used AI coding assistants (TODO: name the tools, e.g. Grok Bot, Copilot, ChatGPT) to help brainstorm, plan, write code, and draft this documentation. All code was written during the event, which is allowed under Bronco Minihacks rules.
 
-## Run the whole app
-
-Terminal 1, from the repository root:
-
-```bash
-source .venv/bin/activate
-python -m backend.app
-```
-
-Terminal 2, from the repository root:
-
-```bash
-pnpm --filter @workspace/sidequest dev
-```
-
-Open **http://127.0.0.1:5173/**. Vite proxies `/api` to Flask on port 5050.
-The Python diagnostic page is http://127.0.0.1:5050/.
-Use `SIDEQUEST_BACKEND_URL` to override the proxy target during local testing.
-The Node/Express API scaffold is retained from the frontend project; Flask serves
-the quest API used by this app.
-
-## Test it
-
-1. Choose **Try synthetic backend demo**. The app opens Map & quests with three
-   explicitly synthetic stops. Reveal a photo idea and complete all three stops
-   to earn the returned badge. Start over resets checklist progress.
-2. Return to Plan a quest. Choose **Cal Poly Pomona campus**, **45 minutes**, and
-   **$0**, then Find my quest. During an outage the saved campus extract allows
-   live AI generation with `places_source: snapshot` while that extract is valid.
-3. Check the top mode label and Quest notes. `ai` means validated live model text;
-   `basic` means template fallback; `demo` means synthetic test data. Place sources
-   distinguish live, cached, snapshot and supplied data.
-4. An unavailable location must show a planner error, not a newly generated sample
-   route. Real geolocation remains opt-in; phone use needs a suitable HTTPS host.
-
-Automated checks:
-
-```bash
-python -m pytest -q
-pnpm --filter @workspace/sidequest test
-node --test overpass-js/overpass.test.js
-pnpm --filter @workspace/sidequest typecheck
-pnpm --filter @workspace/sidequest build
-```
-
-With Python running, `python scripts/smoke_test.py` checks health and the synthetic
-HTTP flow. `--live-request /absolute/path/request.json` additionally calls Groq
-and requires AI mode; it can consume account quota. `/api/health` checks key
-presence, not validity or service availability.
-
-## API and limitations
-
-See [backend handoff](docs/BACKEND_HANDOFF.md) for request/response fields.
-`POST /api/quest` accepts numeric `lat`, `lon`, integer `minutes`, and `budget`.
-The backend selects a feasible trio, prefers category variety and shorter rough
-return loops, and preserves source facts. The model supplies titles, activities,
-photo prompts and badge names. Invalid output gets one retry, then basic fallback.
-Common English purchase directives in the intro/activities are rejected; this is
-an additional limited guard, not a full semantic guarantee. Review generated text.
-
-Activities require no purchase, but fees, hours, public access and accessibility
-are not verified. Unknown costs are not represented as zero. The route is a rough
-distance estimate, not pedestrian directions. Checklist completion is self-reported;
-no photo upload, account system, shared progress or persistent badges are implemented.
-Exactly three stops are generated; choose 30+ minutes to allow activities and walking.
-POI caches do not make map tiles or AI inference available offline.
-
-The timestamped [CPP snapshot](data/cpp_osm_snapshot.json) includes 15 real OSM
-POIs. Node coordinates come from OSM; area positions are derived bounding-box
-centers, not entrances. It is a one-time saved extract, not a runtime call to the
-OSM editing API. Refresh from a verified read-only extract when service returns.
-
-## Credits, licenses and AI disclosure
-
-- Project code: MIT, see [LICENSE](LICENSE).
-- Model: [Qwen3.8-27B](https://huggingface.co/Qwen/Qwen3.8-27B),
-  [Apache-2.0 terms](https://huggingface.co/Qwen/Qwen3.8-27B/blob/main/LICENSE),
-  hosted by Groq. No weights are distributed. The original Llama choice was
-  unavailable to the configured account; update credits if switching models.
-- Map data and snapshot: © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright),
-  ODbL-1.0, separate from the MIT code license. Visible map attribution is retained.
-- Libraries: React, Vite, Leaflet/react-leaflet, Tailwind CSS, Lucide, Flask,
-  Pydantic, groq-python, python-dotenv, HTTPX and pytest; upstream licenses apply.
-- Places integration adapts Berserk_Alert's original Overpass collector. Calvin
-  Truong's frontend layout, tabs and styles are preserved.
-- Codex assisted with backend/integration code, debugging, docs and tests. Other
-  teammates should add their own AI-tool disclosures and contribution details.
-
-The [original team design draft](docs/TEAM_DESIGN_DRAFT.md) is preserved as a
-historical document; its TODOs and old run commands are not the current setup.
-The [local test record](docs/LOCAL_INTEGRATION_TEST.md) records verification and
-known service limitations. The original UI design prompt is preserved separately.
+## 📄 License
+This project is licensed under the MIT License. See [LICENSE](LICENSE).

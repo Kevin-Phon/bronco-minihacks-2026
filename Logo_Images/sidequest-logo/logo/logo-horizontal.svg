@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 400">
+  <style>@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&amp;display=swap');</style>
+  <rect width="1400" height="400" fill="#FFF8F0"/>
+  <g transform="translate(60,56) scale(0.5625)">
+    <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF8A4C"/><stop offset="1" stop-color="#FF5A1F"/></linearGradient></defs>
+    <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+    <path d="M96 404 C 150 360, 120 300, 190 286 S 300 300, 318 250" fill="none" stroke="#FFF8F0" stroke-width="16" stroke-linecap="round" stroke-dasharray="2 34" opacity=".9"/>
+    <circle cx="96" cy="404" r="20" fill="#2EC4B6" stroke="#FFF8F0" stroke-width="8"/>
+    <path d="M340 72c-64 0-114 50-114 112 0 84 114 180 114 180s114-96 114-180c0-62-50-112-114-112z" fill="#FFF8F0"/>
+    <path d="M340 128l17 35 38 5-28 26 7 38-34-18-34 18 7-38-28-26 38-5z" fill="#2EC4B6"/>
+  </g>
+  <text x="400" y="232" font-family="Space Grotesk, sans-serif" font-weight="700" font-size="168" fill="#1B1B1E" letter-spacing="-4">Side<tspan fill="#FF6B35">Quest</tspan></text>
+  <text x="408" y="300" font-family="Space Grotesk, sans-serif" font-weight="700" font-size="40" fill="#6B7280" letter-spacing="2">TURN ANY AFTERNOON INTO AN ADVENTURE</text>
+</svg>
