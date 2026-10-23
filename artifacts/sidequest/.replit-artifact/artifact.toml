@@ -1,7 +1,7 @@
 kind = "web"
 previewPath = "/"
 title = "SideQuest"
-description = "A playful nearby adventure planner that turns a location, time, and budget into a short quest with map stops, challenges, photo prompts, check-offs, and a completion badge."
+description = "A neighborhood quest planner that lets people discover small local missions around their current location."
 version = "1.0.0"
 id = "artifacts/sidequest"
 router = "path"
