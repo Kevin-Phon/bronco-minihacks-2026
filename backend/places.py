@@ -10,6 +10,7 @@ import os
 import time
 import threading
 import math
+import re
 from datetime import datetime, timezone
 import httpx
 from pydantic import ValidationError
@@ -18,6 +19,19 @@ from .quest_ai import distance_m
 
 USER_AGENT = 'SideQuest-MiniHacks/1.0 (+https://github.com/Kevin-Phon/bronco-minihacks-2026)'
 DEFAULT_URL = 'https://overpass.private.coffee/api/interpreter'
+# Tried in order when OVERPASS_URL is not set, sharing one short time budget.
+FALLBACK_URLS = (DEFAULT_URL,
+                 'https://overpass-api.de/api/interpreter',
+                 'https://overpass.kumi.systems/api/interpreter')
+DATA_DIR = Path(__file__).resolve().parent.parent/'data'
+# Real OSM snapshots shipped with the repo, used only near their saved center.
+BUNDLED_SNAPSHOTS = (DATA_DIR/'cpp_osm_snapshot.json', DATA_DIR/'portland_osm_snapshot.json')
+SNAPSHOT_RADIUS_M = 1500
+BUNDLED_SNAPSHOT_MAX_AGE = 14*86400
+# Second live source: the main OSM API "map" call for a small box around the request.
+OSM_API_URL = 'https://api.openstreetmap.org/api/0.6/map.json'
+OSM_API_MAX_HALF_SIDE_M = 700
+OVERPASS_BUDGET = 6     # seconds for all Overpass servers; the OSM API gets the rest
 
 
 class PlacesUnavailable(Exception):
@@ -42,6 +56,43 @@ def build_query(preferences):
                '["tourism"~"artwork|museum|viewpoint|attraction"]',
                '["historic"]', '["shop"~"books|gift|craft|bakery"]']
     return '[out:json][timeout:10];(' + ''.join('nwr["name"]'+f+around+';' for f in filters) + ');out body center 150;'
+
+
+TAG_FILTERS = [('amenity','cafe|restaurant|ice_cream|library'), ('leisure','park|garden|playground'),
+               ('tourism','artwork|museum|viewpoint|attraction'), ('historic',None),
+               ('shop','books|gift|craft|bakery')]
+
+
+def matches_query(tags):
+    """Same rule as build_query: named, and matches any one tag filter."""
+    return isinstance(tags.get('name'),str) and any(
+        key in tags and (pattern is None or re.search(pattern,str(tags[key]))) for key,pattern in TAG_FILTERS)
+
+
+def osm_api_bbox(preferences, half_side_m):
+    dlat=half_side_m/111320
+    dlon=half_side_m/(111320*max(0.01,math.cos(math.radians(preferences.lat))))
+    return f'{preferences.lon-dlon:.5f},{preferences.lat-dlat:.5f},{preferences.lon+dlon:.5f},{preferences.lat+dlat:.5f}'
+
+
+def osm_api_to_elements(osm):
+    """Turn an OSM API map.json into Overpass-style elements (ways get a bounding-box center)."""
+    elements=osm.get('elements') if isinstance(osm,dict) else None
+    if not isinstance(elements,list):
+        raise PlacesUnavailable('OSM API returned malformed data.')
+    nodes={e['id']:e for e in elements if isinstance(e,dict) and e.get('type')=='node' and 'lat' in e}
+    out=[]
+    for e in elements:
+        if not isinstance(e,dict) or not matches_query(e.get('tags') or {}):
+            continue
+        if e.get('type')=='node':
+            out.append(e)
+        elif e.get('type')=='way':
+            points=[nodes[n] for n in e.get('nodes',[]) if n in nodes]
+            if points:
+                lats=[p['lat'] for p in points]; lons=[p['lon'] for p in points]
+                out.append({**e,'center':{'lat':(min(lats)+max(lats))/2,'lon':(min(lons)+max(lons))/2}})
+    return {'elements':out}
 
 
 def normalize_places(data, preferences):
@@ -92,10 +143,21 @@ def normalize_places(data, preferences):
     return result
 
 
+
 class OverpassService:
-    def __init__(self, client=None, cache_path=None, clock=time.time, snapshot_path=None):
+    def __init__(self, client=None, cache_path=None, clock=time.time, snapshot_path=None,
+                 snapshot_paths=None, snapshot_max_age=86400, urls=None, time_budget=15,
+                 osm_api_url=None):
         self.client=client
-        self.snapshot_path=Path(snapshot_path) if snapshot_path else None
+        paths=list(snapshot_paths or [])
+        if snapshot_path:
+            paths.insert(0,snapshot_path)
+        self.snapshot_paths=[Path(p) for p in paths]
+        self.snapshot_max_age=snapshot_max_age
+        self.urls=list(urls) if urls else None
+        self.time_budget=time_budget
+        self.osm_api_url=osm_api_url
+        self.overpass_retry_after=0.0
         self.cache_path=Path(cache_path) if cache_path else Path(__file__).resolve().parent.parent/'data/.cache/overpass.json'
         self.clock=clock
         self.lock=threading.Lock()
@@ -108,18 +170,18 @@ class OverpassService:
         except (OSError,ValueError):
             return {}
 
-    def _snapshot(self, preferences):
-        if self.snapshot_path is None:
-            return None
+    def _load_snapshot(self, path, preferences):
+        """Return (distance_to_center, PlacesBatch) for a usable snapshot file, else None."""
         try:
-            data=json.loads(self.snapshot_path.read_text())
+            data=json.loads(path.read_text())
             stamp=data['fetched_at']
             if isinstance(stamp,bool) or not isinstance(stamp,(int,float)) or not math.isfinite(stamp):
                 return None
-            if not 0 <= self.clock()-stamp <= 86400:
+            if not 0 <= self.clock()-stamp <= self.snapshot_max_age:
                 return None
             center=QuestRequest(**data['center'],minutes=preferences.minutes,budget=preferences.budget)
-            if distance_m(center,preferences)>1500:
+            distance=distance_m(center,preferences)
+            if distance>SNAPSHOT_RADIUS_M:
                 return None
             places=[Place.model_validate(p) for p in data['places']]
             if not 3<=len(places)<=30 or len({p.place_id for p in places})!=len(places):
@@ -128,12 +190,75 @@ class OverpassService:
                     and p.access!='private' and p.fee!='paid']
             if len(places)<3:
                 return None
-            saved_at=datetime.fromtimestamp(stamp,timezone.utc).isoformat(timespec='minutes')
-            return PlacesBatch(places,'snapshot',[
-                f'Live place lookup is unavailable. Using real CPP OpenStreetMap places saved {saved_at}; this is cached map data, not a live lookup.',
+            places.sort(key=lambda p: distance_m(preferences,p))
+            area=data.get('area_name')
+            area=area.strip() if isinstance(area,str) and area.strip() else 'this area'
+            saved_at=datetime.fromtimestamp(stamp,timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
+            return distance, PlacesBatch(places[:15],'snapshot',[
+                f'Live place lookup is unavailable. Using real OpenStreetMap places for {area} saved on {saved_at}; this is saved map data, not a live lookup.',
             ])
-        except (OSError,ValueError,KeyError,TypeError,OverflowError):
+        except (OSError,ValueError,KeyError,TypeError,OverflowError,AttributeError):
             return None
+
+    def _snapshot(self, preferences):
+        """Pick the nearest usable snapshot whose center is within SNAPSHOT_RADIUS_M."""
+        candidates=[found for path in self.snapshot_paths
+                    if (found:=self._load_snapshot(path,preferences)) is not None]
+        if not candidates:
+            return None
+        return min(candidates,key=lambda item:item[0])[1]
+
+    def _overpass_urls(self):
+        if self.urls:
+            return self.urls
+        return [os.getenv('OVERPASS_URL',DEFAULT_URL)]
+
+    def _fetch_overpass(self, client, preferences, deadline):
+        """Try each Overpass server in turn until the Overpass share of the budget runs out."""
+        last_error=None
+        for url in self._overpass_urls():
+            remaining=deadline-time.monotonic()
+            if remaining<=0.5:
+                break
+            try:
+                response=client.post(url,data={'data':build_query(preferences)},
+                                     headers={'User-Agent':USER_AGENT,'Accept':'application/json'},
+                                     timeout=remaining if len(self._overpass_urls())==1 else min(4,remaining))
+                response.raise_for_status()
+                return normalize_places(response.json(),preferences)
+            except (httpx.HTTPError,ValueError,PlacesUnavailable) as error:
+                last_error=error
+        raise last_error or PlacesUnavailable('No Overpass server answered in time.')
+
+    def _fetch_osm_api(self, client, preferences, deadline):
+        """One OSM API map call for a small box; retry once with half the box if it has too many nodes."""
+        half_side=min(search_radius(preferences),OSM_API_MAX_HALF_SIDE_M)
+        for attempt in range(2):
+            remaining=deadline-time.monotonic()
+            if remaining<=0.5:
+                break
+            response=client.get(self.osm_api_url,params={'bbox':osm_api_bbox(preferences,half_side)},
+                                headers={'User-Agent':USER_AGENT,'Accept':'application/json'},timeout=remaining)
+            if response.status_code==400 and attempt==0:
+                half_side/=2   # "too many nodes": ask for a smaller area
+                continue
+            response.raise_for_status()
+            return normalize_places(osm_api_to_elements(response.json()),preferences)
+        raise PlacesUnavailable('The OSM API did not answer in time.')
+
+    def _fetch_live(self, client, preferences):
+        """Overpass first, then the main OSM API, sharing one time budget."""
+        start=time.monotonic()
+        if not self.osm_api_url:
+            return self._fetch_overpass(client,preferences,start+self.time_budget)
+        # After an Overpass failure, skip it for 60 s so each quest isn't slowed down.
+        if self.clock()>=self.overpass_retry_after:
+            try:
+                return self._fetch_overpass(client,preferences,start+OVERPASS_BUDGET)
+            except (httpx.HTTPError,ValueError,PlacesUnavailable):
+                self.overpass_retry_after=self.clock()+60
+        return self._fetch_osm_api(client,preferences,start+self.time_budget)
+
 
     def __call__(self, preferences):
         key=f'{preferences.lat:.4f},{preferences.lon:.4f},{search_radius(preferences)}'
@@ -159,16 +284,11 @@ class OverpassService:
             try:
                 if cooling_down:
                     raise PlacesUnavailable('Overpass is cooling down after a service error.')
-                url=os.getenv('OVERPASS_URL',DEFAULT_URL)
-                def fetch(client):
-                    return client.post(url,data={'data':build_query(preferences)},headers={'User-Agent':USER_AGENT,'Accept':'application/json'},timeout=12)
                 if self.client is not None:
-                    response=fetch(self.client)
+                    places=self._fetch_live(self.client,preferences)
                 else:
                     with httpx.Client() as client:
-                        response=fetch(client)
-                response.raise_for_status()
-                places=normalize_places(response.json(),preferences)
+                        places=self._fetch_live(client,preferences)
                 if len(places)<3:
                     raise PlacesUnavailable('Fewer than three suitable named places were found.')
                 cache[key]={'fetched_at':self.clock(),'places':[p.model_dump() for p in places]}
@@ -196,7 +316,9 @@ class OverpassService:
                 raise PlacesUnavailable('Nearby-place lookup failed or found fewer than three places. Try again later or explicitly choose the synthetic demo.') from None
 
 
-_service=OverpassService(snapshot_path=Path(__file__).resolve().parent.parent/'data/cpp_osm_snapshot.json')
+_service=OverpassService(snapshot_paths=BUNDLED_SNAPSHOTS,snapshot_max_age=BUNDLED_SNAPSHOT_MAX_AGE,
+                         urls=None if os.getenv('OVERPASS_URL') else FALLBACK_URLS,
+                         osm_api_url=OSM_API_URL)
 
 
 def get_places(preferences):
