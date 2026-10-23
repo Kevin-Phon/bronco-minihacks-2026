@@ -119,7 +119,7 @@ class OverpassService:
             if not 0 <= self.clock()-stamp <= 86400:
                 return None
             center=QuestRequest(**data['center'],minutes=preferences.minutes,budget=preferences.budget)
-            if distance_m(center,preferences)>100:
+            if distance_m(center,preferences)>1500:
                 return None
             places=[Place.model_validate(p) for p in data['places']]
             if not 3<=len(places)<=30 or len({p.place_id for p in places})!=len(places):
