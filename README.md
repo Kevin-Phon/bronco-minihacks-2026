@@ -1,8 +1,8 @@
 # SideQuest - Bronco MiniHacks 2026
 
 Kevin's AI/backend for the team's local-adventure project. Python 3.10+.
-This checkout currently contains the backend only. The places adapter and final
-frontend belong to the other teammates.
+This branch includes the AI backend, an integrated Overpass places adapter, and a
+JavaScript API helper. The final frontend is on the frontend teammate's branch.
 
 ## Start in VS Code
 
@@ -45,9 +45,12 @@ Basic/demo output is not proof of AI prize eligibility: demonstrate a real AI ca
 ## Integrate with the team
 
 See [backend handoff](docs/BACKEND_HANDOFF.md) for the exact API and places interface.
-Person 2 implements `backend/places.py:get_places(preferences)` using Overpass.
-Person 3 calls `POST /api/quest` from the frontend. Supplied normalized places are
-also accepted so the AI integration can be tested before that adapter is merged.
+The teammate's Overpass collector has been adapted into `backend/places.py`.
+Person 3 can import `generateQuest` from `overpass-js/overpass.js` or call
+`POST /api/quest` with coordinates, minutes and budget. Configure a Vite `/api`
+proxy to port 5050. Names and coordinates come from OSM; AI adds creative text.
+The JS helper no longer queries Overpass directly or returns invented fallback places.
+Supplied normalized places are still supported for testing/separate providers.
 
 ## Verify
 
@@ -58,7 +61,8 @@ python scripts/smoke_test.py
 
 Run the smoke command in a second terminal while the server runs. It checks real
 local HTTP health and the explicit synthetic demo, without internet services.
-For a live check, save a request containing REAL normalized places and run:
+For a live check, save a JSON request with coordinates, minutes and budget (see
+the handoff), then run:
 
 ```bash
 python scripts/smoke_test.py --live-request /absolute/path/to/request.json
@@ -69,12 +73,23 @@ fallback instead of `mode: ai`. It does not print the key or full provider error
 
 ## Current limitations
 
-- No Overpass implementation, final UI, or public hosting yet.
+- Final frontend wiring and public hosting are still needed.
+- Overpass is a public external service and may be unavailable. We observed live
+  request timeouts during this integration; full live OSM-to-AI verification is pending.
+- Search includes named nodes and areas, balances categories and returns up to 15
+  candidates within 250-1500 m depending on duration. Unknown fees/access stay unknown.
+- POI responses cache for 10 minutes. On lookup failure, a matching area cache up
+  to 24 hours old can be used with `places_source: stale_cache` and a warning.
+  Cache files are local and ignored by Git. Without a matching cache, return 503;
+  synthetic data requires explicitly choosing demo mode.
+- Override the server-side `OVERPASS_URL` only with a trusted interpreter URL.
+  Default: https://overpass.private.coffee/api/interpreter.
 - Exactly 3 stops. Input time 5-240 minutes; budget 0-10000 USD (preference only).
 - No mandatory purchase activities; known paid/private places are excluded.
-- Stop selection keeps the first three eligible candidates in teammate order.
-  Each must be within 2 km. A rough return-to-start distance estimate plus five
-  minutes per stop must fit the request. This is not pedestrian routing.
+- Stop selection checks ordered triples for a feasible time estimate, prefers
+  category variety, then shorter loops. Each place must be within 2 km. A rough
+  return-to-start distance estimate plus five minutes per stop must fit the
+  request. This is not pedestrian routing.
 - Unknown fees/access/hours are not represented as verified facts.
 - Synthetic demo positions/names are examples, not verified campus destinations.
 - Fallback JSON does not cache map tiles, so it does not make the entire app offline.
@@ -91,11 +106,15 @@ If switching to Llama, update credits and comply with its model-specific license
 Groq hosts inference. Flask, Pydantic, groq-python, python-dotenv, pytest and HTTPX
 are used for the API, validation and tests; their upstream licenses remain applicable.
 
-When OSM data/maps are integrated, preserve visible OpenStreetMap contributor
-attribution and document [ODbL data terms](https://www.openstreetmap.org/copyright)
-separately, including any redistributed cache. Add Leaflet/tile-provider credits
+Show visible OpenStreetMap contributor attribution in the frontend and follow [ODbL data terms](https://www.openstreetmap.org/copyright)
+including any redistributed cache. Add Leaflet/tile-provider credits
 when those components are added.
 
 AI tool disclosure: Codex assisted with backend planning, implementation,
 documentation and automated tests. Team members should review and understand the
 code, document their contributions, and disclose additional AI tools used.
+
+Overpass integration credit: adapted from Berserk_Alert's `overpass-js/overpass.js`
+collector on main (commit c4b3830). The server now handles normalization/caching;
+the browser helper exports calls to the shared API. No real-world fallback POI
+list is bundled: main's fallback_pois.json contained a design prompt, not POI records.

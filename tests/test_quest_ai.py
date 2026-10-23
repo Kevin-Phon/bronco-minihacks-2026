@@ -131,3 +131,13 @@ def test_configured_model_is_reported_in_quest(preferences, places):
             quest = generate_quest(preferences, places, GroqCompletion(client=sdk, model='qwen/qwen3.8-27b'))
     assert quest.mode == 'ai'
     assert quest.model == 'qwen/qwen3.8-27b'
+
+
+def test_selection_uses_feasible_later_stops_instead_of_rejecting():
+    from backend.schemas import Place, QuestRequest
+    from backend.quest_ai import select_places
+    request=QuestRequest(lat=34.0572,lon=-117.8214,minutes=30,budget=0)
+    candidates=[Place(place_id=str(i),name='Test',lat=lat,lon=-117.8214,category=category)
+                for i,lat,category in [(1,34.0573,'culture'),(2,34.0574,'food'),
+                                      (3,34.0624,'historic'),(4,34.0575,'park')]]
+    assert {p.place_id for p in select_places(request,candidates)}=={'1','2','4'}

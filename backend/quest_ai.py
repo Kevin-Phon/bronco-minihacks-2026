@@ -1,6 +1,7 @@
 """Generate creative text while preserving trusted candidate-place facts."""
 import json
 import math
+from itertools import permutations
 from groq import Groq, APIError
 from pydantic import ValidationError
 from .schemas import CreativeQuest, Place, QuestRequest, QuestResponse, QuestStop
@@ -68,21 +69,30 @@ def distance_m(a, b):
 
 
 def select_places(request, candidates):
-    """Defensive checks; Person 2 still owns real filtering and route selection."""
+    """Choose a feasible, varied trio using a rough return-loop estimate."""
     places = [p if isinstance(p, Place) else Place.model_validate(p) for p in candidates]
     if len(places) > 30 or len({p.place_id for p in places}) != len(places):
         raise NoSuitablePlaces('Candidates must have unique IDs and contain at most 30 places.')
     eligible = [p for p in places if p.access != 'private' and p.fee != 'paid'
                 and distance_m(request, p) <= 2000]
-    selected = eligible[:3]  # Preserve the data teammate's ordering.
-    if len(selected) != 3:
+    if len(eligible) < 3:
         raise NoSuitablePlaces('Need three suitable places within 2 km; expand the search or choose another preset.')
-    # Include return to start, five minutes per challenge, and a rough detour factor.
-    chain = [request, *selected, request]
-    estimate = 15 + sum(distance_m(a,b) for a,b in zip(chain,chain[1:])) * 1.3 / 65
-    if estimate > request.minutes:
+    # Check all ordered triples (at most 30*29*28); cache pairwise distances.
+    origins = [distance_m(request,p) for p in eligible]
+    pairs = {(i,j):distance_m(a,b) for i,a in enumerate(eligible) for j,b in enumerate(eligible)}
+    best = None
+    for indices in permutations(range(len(eligible)),3):
+        i,j,k = indices
+        length = origins[i] + pairs[i,j] + pairs[j,k] + origins[k]
+        if 15 + length * 1.3 / 65 > request.minutes:
+            continue
+        diversity = len({eligible[n].category for n in indices})
+        score = (-diversity, round(length,6), indices)
+        if best is None or score < best[0]:
+            best = (score, indices)
+    if best is None:
         raise NoSuitablePlaces('These stops exceed the rough time estimate; choose closer stops or more time.')
-    return selected
+    return [eligible[i] for i in best[1]]
 
 
 def basic_content(places):

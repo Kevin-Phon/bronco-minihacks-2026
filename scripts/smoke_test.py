@@ -18,7 +18,7 @@ def main():
         payload = args.live_request.read_bytes() if args.live_request else b'{}'
         req = Request('http://127.0.0.1:5050'+path, data=payload,
                       headers={'Content-Type':'application/json'}, method='POST')
-        with urlopen(req, timeout=30) as response:
+        with urlopen(req, timeout=45) as response:
             quest = json.load(response)
         print('Mode:', quest['mode'], '| Stops:', len(quest['stops']))
         expected = 'ai' if args.live_request else 'demo'

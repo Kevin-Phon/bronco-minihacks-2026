@@ -2,15 +2,13 @@
 
 ## Person 2: places adapter
 
-Implement this exact function in `backend/places.py`:
-
-```python
-def get_places(preferences):
-    # preferences.lat, .lon, .minutes, .budget are validated numbers.
-    # Return a list of <=30 dictionaries or schemas.Place instances.
-    # Raise PlacesUnavailable for network/Overpass failures.
-    ...
-```
+Implemented in `backend/places.py`, adapted from Berserk_Alert's collector.
+`get_places(preferences)` now returns `PlacesBatch(places, source, warnings)`.
+The API also accepts a plain list from injected/alternative providers. Overpass
+queries named nodes, ways and relations, excludes known paid/private places,
+normalizes area centers and balances categories. Unknown facts remain unknown.
+The server caches POIs, with a labeled matching-area fallback; see README.
+No bundled fictional places or browser localStorage fallback enter live quests.
 
 Each dictionary accepts these fields only:
 
@@ -25,9 +23,9 @@ Each dictionary accepts these fields only:
 | access | Optional `public`, `private`, or `unknown`; default unknown |
 
 Normalize Overpass `node`, `way`, `relation` results; don't pass raw OSM objects.
-Keep raw tags/caches in your module. Return unique IDs; preserve walking order.
-The backend selects the first 3 eligible entries and checks a rough full-loop
-distance estimate. Your module should handle category diversity and actual access.
+Keep raw tags/caches in your module. Return unique IDs. The backend checks
+ordered triples for time feasibility, then prefers category variety and shorter
+rough return loops. The adapter handles category diversity; actual access still needs checking.
 Unknown is not the same as free/public. Never invent price data.
 Network exceptions must be translated into PlacesUnavailable, without logging keys.
 
@@ -45,7 +43,8 @@ Send `Content-Type: application/json`:
 {"lat":34.06,"lon":-117.82,"minutes":45,"budget":0}
 ```
 
-Coordinates above are illustrative. Use a verified location preset/user choice.
+For the frontend CPP preset use latitude 34.0572, longitude -117.8214.
+Use the same preset in the map and request.
 Optional `places` is a 3-30 element array matching the table above, bypassing the
 adapter. It is useful if the places teammate builds a separate API. Supplied
 candidates are not independently verified by the backend; never claim otherwise.
@@ -56,6 +55,7 @@ Successful response (stops array contains exactly 3):
 ```json
 {
   "mode":"ai",
+  "places_source":"live",
   "model":"qwen/qwen3.8-27b",
   "title":"Quest title",
   "intro":"Short introduction",
@@ -80,7 +80,7 @@ Modes:
 - `basic`: template activities, no claim of fresh AI generation; model is null.
 - `demo`: explicit synthetic fixture, not a real itinerary; model is null.
 
-Show a loading indicator, disable repeated clicks, and allow up to 30 seconds.
+Show a loading indicator, disable repeated clicks, and allow up to 45 seconds.
 Show warnings in the UI. Bad AI output gets one retry; provider failures do not.
 Store checked-stop progress in frontend state, keyed by the active quest.
 JSON API does not implement badges/progress persistence or photo upload.
@@ -90,7 +90,7 @@ Errors have `{"error":{"code":"...","message":"..."}}`:
 - 413 request over 64 KiB.
 - 422 invalid_request: invalid field types, bounds, duplicate candidate IDs.
 - 422 no_suitable_places: insufficient nearby/eligible places or time too short.
-- 503 places_unavailable: adapter not ready, malformed adapter result, service failure.
+- 503 places_unavailable: missing suitable OSM results, malformed adapter result, service failure without matching cache.
 
 ### POST /api/demo-quest
 
@@ -112,7 +112,46 @@ and may need human review; schema checks are not a factual or safety guarantee.
 
 No key is required for basic or synthetic demo mode. Configure the key in `.env`,
 restart, and use scripts/smoke_test.py --live-request with your teammate's real data.
-No live Groq call has been verified until that command reports mode ai.
+Groq generation was previously verified with supplied test places. A full live
+OSM-to-AI request remains unverified because public Overpass requests timed out.
 
 ## Model availability update
 The account model list excludes the original Llama choice. Qwen 3.8 27B is the working default, with Apache-2.0 model terms. GROQ_MODEL can override it; health and successful quest metadata report the configured model. Update model credits if changing it.
+
+## Frontend integration next
+
+Use `generateQuest({lat, lon, minutes, budget})` from `overpass-js/overpass.js`
+(or fetch `/api/quest` directly). It returns the entire quest; a separate places
+call is unnecessary. `fetchNearbyPOIs(lat, lon, {minutes, budget})` returns
+`{places, source, warnings}` from `POST /api/places` without calling AI.
+The old third positional radius argument has been replaced by options.
+
+For the current React frontend, map each backend stop into the UI shape:
+
+```js
+const stops = quest.stops.map((s, i) => ({
+  id: i + 1,
+  name: s.name,
+  area: s.category,
+  coordinates: [s.lat, s.lon],
+  challenge: s.challenge,
+  photo: s.photo_prompt,
+  detail: 'Check public access and opening hours before visiting.',
+}));
+```
+
+Do not invent `cost` or per-stop `duration`: these are unknown, not zero/confirmed.
+Render unknown cost as "No purchase required; admission unknown" and use
+`requested_minutes` as the user's preference, not a measured route duration.
+Reset checked stops when a new quest is loaded; use `badge_name` at completion.
+Show `mode`, `places_source` and warnings. Map/data attribution must be visible.
+`places_source` values: live, cache, stale_cache, supplied, provider, demo.
+
+For local Vite, add this entry inside the existing `server` configuration:
+
+```js
+proxy: { '/api': 'http://127.0.0.1:5050' }
+```
+
+This does not deploy the Python server. Public hosting needs same-origin HTTPS
+routing to a production backend. Frontend package scripts have not been run here.

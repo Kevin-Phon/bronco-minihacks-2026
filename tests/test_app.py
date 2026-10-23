@@ -1,5 +1,7 @@
 import pytest
 from backend.app import create_app
+from backend.places import PlacesBatch, PlacesUnavailable
+from backend.schemas import Place
 
 
 PLACES = [{'place_id': f'node/{i}', 'name': f'Place {i}',
@@ -9,7 +11,9 @@ PREFS = {'lat':34.06, 'lon':-117.82, 'minutes':45, 'budget':0}
 
 @pytest.fixture
 def client():
-    return create_app({'TESTING':True, 'GROQ_API_KEY':''}).test_client()
+    def unavailable(_):
+        raise PlacesUnavailable()
+    return create_app({'TESTING':True, 'GROQ_API_KEY':''}, places_provider=unavailable).test_client()
 
 
 def test_health_reports_only_key_presence(client):
@@ -96,3 +100,29 @@ def test_diagnostic_page_is_available(client):
 def test_health_reports_configured_model():
     client = create_app({'TESTING':True,'GROQ_API_KEY':'','GROQ_MODEL':'alternate-model'}).test_client()
     assert client.get('/api/health').json['model'] == 'alternate-model'
+
+
+def test_batch_source_and_warnings_reach_quest():
+    batch=PlacesBatch([Place.model_validate(p) for p in PLACES], 'stale_cache', ['Cached area data.'])
+    client=create_app({'TESTING':True,'GROQ_API_KEY':''},places_provider=lambda _:batch).test_client()
+    r=client.post('/api/quest',json=PREFS)
+    assert r.status_code==200
+    assert r.json['places_source']=='stale_cache'
+    assert 'Cached area data.' in r.json['warnings']
+
+
+def test_places_endpoint_exposes_normalized_data_without_ai():
+    batch=PlacesBatch([Place.model_validate(p) for p in PLACES], 'live')
+    def never(*args):
+        pytest.fail('Places endpoint called AI')
+    client=create_app({'TESTING':True},places_provider=lambda _:batch,completion=never).test_client()
+    r=client.post('/api/places',json=PREFS)
+    assert r.status_code==200
+    assert r.json['source']=='live'
+    assert r.json['places']==[p.model_dump() for p in batch.places]
+
+
+def test_supplied_data_has_explicit_source(client):
+    r=client.post('/api/quest',json={**PREFS,'places':PLACES})
+    assert r.json['places_source']=='supplied'
+    assert client.post('/api/demo-quest').json['places_source']=='demo'

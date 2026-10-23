@@ -5,7 +5,7 @@ from flask import Flask, jsonify, request, send_file
 from dotenv import load_dotenv
 from pydantic import ValidationError
 from werkzeug.exceptions import HTTPException
-from .places import get_places, PlacesUnavailable
+from .places import get_places, PlacesUnavailable, PlacesBatch
 from .quest_ai import GroqCompletion, NoSuitablePlaces, generate_quest, basic_content, assemble, MODEL
 from .schemas import QuestRequest, Place
 
@@ -37,6 +37,7 @@ def create_app(config=None, *, places_provider=None, completion=None):
         return jsonify(status='ok', ai_configured=bool(app.config['GROQ_API_KEY']), model=app.config['GROQ_MODEL'])
 
     @app.post('/api/quest')
+    @app.post('/api/places')
     def quest():
         raw = request.get_json()
         if not isinstance(raw, dict):
@@ -48,11 +49,18 @@ def create_app(config=None, *, places_provider=None, completion=None):
             return error('invalid_request', 'Invalid fields: '+', '.join(fields)+'. See docs/BACKEND_HANDOFF.md.', 422)
         try:
             candidates = preferences.places if preferences.places is not None else provider(preferences)
+            source = 'supplied' if preferences.places is not None else 'provider'
+            place_warnings = []
+            if isinstance(candidates, PlacesBatch):
+                source, place_warnings = candidates.source, candidates.warnings
+                candidates = candidates.places
             if not isinstance(candidates, (list, tuple)):
                 raise PlacesUnavailable()
             candidates = [p if isinstance(p,Place) else Place.model_validate(p) for p in candidates]
         except (PlacesUnavailable, ValidationError, TypeError):
-            return error('places_unavailable', 'Places service is not ready. Connect backend/places.py or pass normalized places; use /api/demo-quest for synthetic testing.', 503)
+            return error('places_unavailable', 'Nearby-place lookup is unavailable or found too few places. Try again later; /api/demo-quest is an explicit synthetic test.', 503)
+        if request.path == '/api/places':
+            return jsonify(places=[p.model_dump() for p in candidates], source=source, warnings=place_warnings)
         ai = completion
         owned_ai = None
         try:
@@ -60,6 +68,8 @@ def create_app(config=None, *, places_provider=None, completion=None):
                 owned_ai = GroqCompletion(api_key=app.config['GROQ_API_KEY'], model=app.config['GROQ_MODEL'])
                 ai = owned_ai
             result = generate_quest(preferences, candidates, ai)
+            result.places_source = source
+            result.warnings.extend(place_warnings)
             return jsonify(result.model_dump())
         except NoSuitablePlaces as exc:
             return error('no_suitable_places', str(exc), 422)
@@ -75,6 +85,7 @@ def create_app(config=None, *, places_provider=None, completion=None):
                   for i,lat in enumerate((34.0601,34.0602,34.0603),1)]
         result = assemble(preferences, places, basic_content(places), 'demo',
             ['Synthetic sample locations for backend testing only; not verified destinations or live AI output.'])
+        result.places_source = 'demo'
         return jsonify(result.model_dump())
 
     return app

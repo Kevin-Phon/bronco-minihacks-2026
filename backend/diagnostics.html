@@ -10,11 +10,11 @@ p{line-height:1.6}a{color:#9ef0ba}
 </style>
 <h1>SideQuest Backend Check</h1>
 <p>This is Kevin's diagnostic page, not the team's final interface. The demo uses synthetic places and no AI calls.
-Live generation needs a server-side Groq key and real normalized places from your teammate.</p>
+Live generation looks up nearby OpenStreetMap places and uses a server-side Groq key.</p>
 <button id="health">Check configuration</button><button id="demo">Run synthetic demo</button>
-<p>For a live test, paste a JSON request with lat, lon, minutes, budget and your teammate's places array.
+<p>For a live test, use lat, lon, minutes and budget. The preset below is CPP campus; an optional normalized places array bypasses the lookup.
 This sends the place names/categories to Groq when a server key is configured. Do not paste keys here.</p>
-<textarea id="payload" aria-label="Quest JSON request">{"lat":34.06,"lon":-117.82,"minutes":45,"budget":0}</textarea>
+<textarea id="payload" aria-label="Quest JSON request">{"lat":34.0572,"lon":-117.8214,"minutes":45,"budget":0}</textarea>
 <button id="generate">Generate quest</button><p id="status" role="status">Ready.</p><pre id="output">Results will appear here.</pre>
 <script>
 const statusEl=document.getElementById('status'),output=document.getElementById('output');
@@ -23,7 +23,7 @@ async function call(path,body){
  statusEl.textContent='Working...';
  try{
   const options=body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)};
-  const response=await fetch(path,{...options,signal:AbortSignal.timeout(30000)});
+  const response=await fetch(path,{...options,signal:AbortSignal.timeout(45000)});
   output.textContent=JSON.stringify(await response.json(),null,2);
   statusEl.textContent=response.ok?'Complete. Check the mode and warnings.':'Request failed: HTTP '+response.status;
  }catch(e){statusEl.textContent='Could not complete the request. Check the server and input JSON.';}
