@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { MapContainer, Marker, Polyline, TileLayer, useMap } from 'react-leaflet';
+import { CircleMarker, MapContainer, Marker, Polyline, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import {
   ArrowDownRight, ArrowRight, BadgeCheck, Camera, Check, CheckCircle2, ChevronDown,
@@ -65,6 +65,18 @@ type PresetLocation = {
   stops: Stop[];
 };
 
+type CurrentCoordinates = {
+  latitude: number;
+  longitude: number;
+};
+
+type StartLocation = 'portland' | 'cal-poly-pomona' | 'current';
+
+type GeneratedQuestResponse = {
+  locationLabel?: string;
+  stops: Stop[];
+};
+
 const pomonaStops: Stop[] = [
   {
     id: 1, name: 'Bronco Student Center', area: 'The campus gathering place',
@@ -127,34 +139,165 @@ const markerIcon = (number: number, done: boolean) => L.divIcon({
   iconAnchor: [17, 17],
 });
 
-function MapFocus({ selected, stops }: { selected: number; stops: Stop[] }) {
+function isStop(value: unknown): value is Stop {
+  if (!value || typeof value !== 'object') return false;
+
+  const stop = value as Record<string, unknown>;
+  const coordinates = stop.coordinates;
+  return (
+    typeof stop.id === 'number' &&
+    typeof stop.name === 'string' &&
+    typeof stop.area === 'string' &&
+    Array.isArray(coordinates) &&
+    coordinates.length === 2 &&
+    coordinates.every((coordinate) => typeof coordinate === 'number' && Number.isFinite(coordinate)) &&
+    typeof stop.duration === 'number' &&
+    Number.isFinite(stop.duration) &&
+    typeof stop.cost === 'number' &&
+    Number.isFinite(stop.cost) &&
+    typeof stop.challenge === 'string' &&
+    typeof stop.photo === 'string' &&
+    typeof stop.detail === 'string'
+  );
+}
+
+function MapFocus({ selected, stops, center }: { selected: number; stops: Stop[]; center: [number, number] }) {
   const map = useMap();
   const target = stops.find((stop) => stop.id === selected);
   useEffect(() => {
     if (target) map.flyTo(target.coordinates, 16, { duration: 0.7 });
-  }, [map, target]);
+    else map.flyTo(center, 15, { duration: 0.7 });
+  }, [map, target, center]);
   return null;
 }
 
 function App() {
-  const [start, setStart] = useState<'portland' | 'cal-poly-pomona'>('cal-poly-pomona');
+  const [start, setStart] = useState<StartLocation>('cal-poly-pomona');
   const [time, setTime] = useState(60);
   const [budget, setBudget] = useState(10);
   const [activeStops, setActiveStops] = useState<Stop[]>(locations['cal-poly-pomona'].stops);
+  const [currentCoordinates, setCurrentCoordinates] = useState<CurrentCoordinates | null>(null);
   const [completed, setCompleted] = useState<number[]>([]);
   const [revealed, setRevealed] = useState<number[]>([]);
   const [selected, setSelected] = useState(1);
   const [started, setStarted] = useState(false);
+  const [isRequestingLocation, setIsRequestingLocation] = useState(false);
+  const [isPlanning, setIsPlanning] = useState(false);
+  const [isGeneratedQuest, setIsGeneratedQuest] = useState(false);
   const [status, setStatus] = useState('');
 
-  const location = locations[start];
+  const currentMapCenter = useMemo<[number, number]>(
+    () => currentCoordinates
+      ? [currentCoordinates.latitude, currentCoordinates.longitude]
+      : locations['cal-poly-pomona'].mapCenter,
+    [currentCoordinates],
+  );
+  const location: PresetLocation = start === 'current'
+    ? {
+      label: 'your current location',
+      mapLabel: 'your current location',
+      mapCenter: currentMapCenter,
+      coordinateLabel: currentCoordinates
+        ? [currentCoordinates.latitude.toFixed(3), currentCoordinates.longitude.toFixed(3)]
+        : ['', ''],
+      stops: [],
+    }
+    : locations[start];
   const doneCount = completed.length;
   const finished = activeStops.length > 0 && doneCount === activeStops.length;
   const routePoints = useMemo(() => activeStops.map((stop) => stop.coordinates), [activeStops]);
   const estimatedTime = activeStops.reduce((sum, stop) => sum + stop.duration, 0);
   const estimatedCost = activeStops.reduce((sum, stop) => sum + stop.cost, 0);
 
-  const planQuest = () => {
+  const requestCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setStatus('Location is not available in this browser. Choose a preset neighborhood instead.');
+      return;
+    }
+
+    setIsRequestingLocation(true);
+    setStatus('Waiting for location permission…');
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const nextCoordinates = {
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        };
+        setCurrentCoordinates(nextCoordinates);
+        setStart('current');
+        setActiveStops([]);
+        setCompleted([]);
+        setRevealed([]);
+        setSelected(0);
+        setStarted(false);
+        setIsGeneratedQuest(false);
+        setIsRequestingLocation(false);
+        setStatus('Location ready. Tap “Find my quest” to send it to the quest service.');
+      },
+      (error) => {
+        setIsRequestingLocation(false);
+        if (error.code === 1) {
+          setStatus('Location permission was denied. Choose a preset neighborhood or allow location access in your browser.');
+        } else if (error.code === 2) {
+          setStatus('Your location could not be determined. Try again or choose a preset neighborhood.');
+        } else {
+          setStatus('The location request timed out. Try again or choose a preset neighborhood.');
+        }
+      },
+      { enableHighAccuracy: false, maximumAge: 60_000, timeout: 15_000 },
+    );
+  };
+
+  const planQuest = async () => {
+    if (start === 'current') {
+      if (!currentCoordinates) {
+        setStatus('Choose “My current location” first so the browser can ask for permission.');
+        return;
+      }
+
+      setIsPlanning(true);
+      setStatus('Finding quests near you…');
+      try {
+        const response = await fetch('/api/quests/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            latitude: currentCoordinates.latitude,
+            longitude: currentCoordinates.longitude,
+            timeMinutes: time,
+            budget,
+          }),
+        });
+        const result = await response.json().catch(() => null) as
+          | (Partial<GeneratedQuestResponse> & { error?: string; message?: string })
+          | null;
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            throw new Error('The backend does not yet provide POST /api/quests/generate. Your location is ready, but live quests need that route.');
+          }
+          throw new Error(result?.message ?? result?.error ?? 'The quest service could not create a route. Try again.');
+        }
+        if (!Array.isArray(result?.stops) || !result.stops.every(isStop)) {
+          throw new Error('The quest service returned an unexpected response. Expected a list of quest stops.');
+        }
+
+        const generatedStops = result.stops;
+        setActiveStops(generatedStops);
+        setCompleted([]);
+        setRevealed([]);
+        setSelected(generatedStops[0]?.id ?? 0);
+        setStarted(true);
+        setIsGeneratedQuest(true);
+        setStatus(`Your ${generatedStops.length}-stop quest is ready ${result.locationLabel ? `near ${result.locationLabel}` : 'near you'}.`);
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : 'The quest service could not be reached. Try again.');
+      } finally {
+        setIsPlanning(false);
+      }
+      return;
+    }
+
     const maxStops = time < 40 ? 3 : time < 60 ? 4 : 5;
     const candidates = location.stops.filter((stop) => stop.cost <= budget);
     const selectedStops = candidates.slice(0, maxStops);
@@ -163,17 +306,25 @@ function App() {
     setRevealed([]);
     setSelected(selectedStops[0]?.id ?? 1);
     setStarted(true);
+    setIsGeneratedQuest(false);
     setStatus(`Your ${selectedStops.length}-stop demo route is ready around ${location.label}.`);
   };
 
-  const changeLocation = (locationId: 'portland' | 'cal-poly-pomona') => {
+  const changeLocation = (locationId: StartLocation) => {
+    if (locationId === 'current') {
+      requestCurrentLocation();
+      return;
+    }
+
     const nextLocation = locations[locationId];
     setStart(locationId);
+    setCurrentCoordinates(null);
     setActiveStops(nextLocation.stops);
     setCompleted([]);
     setRevealed([]);
     setSelected(nextLocation.stops[0]?.id ?? 1);
     setStarted(false);
+    setIsGeneratedQuest(false);
     setStatus(`Showing the fixed demo route near ${nextLocation.label}.`);
   };
 
@@ -193,7 +344,11 @@ function App() {
     setCompleted([]);
     setRevealed([]);
     setStarted(false);
-    setStatus(`Quest reset. Your demo stops near ${location.label} are ready when you are.`);
+    setStatus(start === 'current'
+      ? isGeneratedQuest
+        ? `Quest reset. Your generated stops near ${location.label} are ready when you are.`
+        : 'Quest reset. Your location is ready when quest generation is connected.'
+      : `Quest reset. Your demo stops near ${location.label} are ready when you are.`);
   };
 
   return (
@@ -204,7 +359,7 @@ function App() {
           <span>sidequest<span className="brand-period">.</span></span>
         </a>
         <div className="topbar-right">
-          <span className="demo-chip"><span className="demo-dot" /> DEMO ROUTE · FIXED STOPS</span>
+          <span className="demo-chip"><span className="demo-dot" /> {isGeneratedQuest ? 'QUESTS NEAR YOU' : start === 'current' ? 'CURRENT LOCATION' : 'DEMO ROUTE · FIXED STOPS'}</span>
           <span className="avatar-button" aria-label="SideQuest demo">SQ</span>
         </div>
       </header>
@@ -226,7 +381,7 @@ function App() {
       <section className="planner" aria-label="Quest planner">
         <div className="planner-title">
           <span className="planner-kicker">FIRST, THE BASICS</span>
-          <span className="planner-note">A real-world route, a demo neighborhood.</span>
+          <span className="planner-note">{start === 'current' ? 'A real-world route, built around you.' : 'A real-world route, a demo neighborhood.'}</span>
         </div>
         <div className="planner-fields">
           <label className="field-block" htmlFor="start">
@@ -235,11 +390,13 @@ function App() {
               <select
                 id="start"
                 value={start}
-                onChange={(event) => changeLocation(event.target.value as 'portland' | 'cal-poly-pomona')}
+                onChange={(event) => changeLocation(event.target.value as StartLocation)}
+                disabled={isRequestingLocation || isPlanning}
                 data-testid="input-start-location"
               >
                 <option value="portland">Downtown Portland</option>
                 <option value="cal-poly-pomona">Cal Poly Pomona campus</option>
+                <option value="current">My current location</option>
               </select>
               <ChevronDown size={15} aria-hidden="true" />
             </span>
@@ -268,20 +425,24 @@ function App() {
               <ChevronDown size={15} aria-hidden="true" />
             </span>
           </label>
-          <button className="plan-button" onClick={planQuest} type="button" data-testid="button-plan-quest">
-            {started ? 'Replan my quest' : 'Find my quest'} <ArrowRight size={17} />
+          <button className="plan-button" onClick={planQuest} type="button" disabled={isPlanning || isRequestingLocation} data-testid="button-plan-quest">
+            {isPlanning ? 'Finding quests…' : started ? 'Replan my quest' : 'Find my quest'} <ArrowRight size={17} />
           </button>
         </div>
         <p className="fixture-note" data-testid="text-demo-disclaimer">
-          <span className="fixture-pin" /> Demo route: these fixed stops are near {location.label}. Choose a preset to move the map; time and budget shape the plan.
+          <span className="fixture-pin" /> {start === 'current'
+            ? 'Your coordinates go to the quest backend only after you tap “Find my quest”.'
+            : `Demo route: these fixed stops are near ${location.label}. Choose a preset to move the map; time and budget shape the plan.`}
         </p>
       </section>
 
       <section className="quest-layout" aria-label="Your neighborhood quest">
         <div className="map-column">
           <div className="section-heading map-heading">
-            <div><span className="section-kicker">THE NEIGHBORHOOD</span><h2>{activeStops.length} stops, one good loop.</h2></div>
-            <div className="map-legend"><span className="legend-dot" /> DEMO STOPS</div>
+            <div><span className="section-kicker">THE NEIGHBORHOOD</span><h2>{start === 'current' && activeStops.length === 0
+              ? isGeneratedQuest ? 'No quests found nearby.' : 'Location centered, quests next.'
+              : `${activeStops.length} stops, one good loop.`}</h2></div>
+            <div className="map-legend"><span className="legend-dot" /> {isGeneratedQuest ? 'YOUR QUESTS' : start === 'current' ? 'YOUR LOCATION' : 'DEMO STOPS'}</div>
           </div>
           <div className="map-frame" data-testid="map-quest">
             <MapContainer center={location.mapCenter} zoom={15} scrollWheelZoom={false} zoomControl={true} className="quest-map" aria-label={`Interactive demo route map of ${location.mapLabel}`}>
@@ -301,7 +462,14 @@ function App() {
                   alt={`Stop ${stop.id}: ${stop.name}`}
                 />
               ))}
-              <MapFocus selected={selected} stops={activeStops} />
+              {start === 'current' && currentCoordinates && (
+                <CircleMarker
+                  center={[currentCoordinates.latitude, currentCoordinates.longitude]}
+                  radius={8}
+                  pathOptions={{ color: '#ffffff', weight: 3, fillColor: '#2ec4b6', fillOpacity: 1 }}
+                />
+              )}
+              <MapFocus selected={selected} stops={activeStops} center={location.mapCenter} />
             </MapContainer>
             <div className="map-count"><span>{activeStops.length}</span> STOPS <i /> <span>{estimatedTime}</span> MIN WALK + WANDER</div>
           </div>
@@ -381,7 +549,9 @@ function App() {
       <footer className="footer">
         <div className="footer-brand"><span className="footer-mark"><Compass size={16} /></span> sidequest.</div>
         <span>Made for the time between plans.</span>
-          <span className="footer-demo">A {location.label.toUpperCase()} DEMO ROUTE · FIXED LOCAL FIXTURES</span>
+          <span className="footer-demo">{start === 'current'
+            ? isGeneratedQuest ? 'QUESTS GENERATED NEAR YOUR LOCATION' : 'LIVE LOCATION · QUESTS REQUIRE BACKEND CONNECTION'
+            : `A ${location.label.toUpperCase()} DEMO ROUTE · FIXED LOCAL FIXTURES`}</span>
       </footer>
     </main>
   );

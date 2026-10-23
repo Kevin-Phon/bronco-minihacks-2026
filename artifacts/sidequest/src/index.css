@@ -338,7 +338,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   box-shadow: 0 3px 12px #20393242; color: white; display: flex; font-family: 'DM Mono', monospace;
   font-size: 13px; font-weight: 500; height: 34px; justify-content: center; width: 34px;
 }
-.quest-marker.is-done { background: #345f50; }
+.quest-marker.is-done { background: #2ec4b6; }
+.plan-button:disabled { cursor: wait; opacity: .72; }
 .leaflet-div-icon { background: transparent !important; border: 0 !important; }
 @keyframes rise-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 .rise-in { animation: rise-in .55s cubic-bezier(.2,.75,.2,1) both; }
