@@ -30,7 +30,7 @@ class QuestRequest(StrictModel):
     lon: float = Field(ge=-180, le=180)
     minutes: int = Field(strict=True, ge=5, le=240)
     budget: float = Field(ge=0, le=10000)
-    places: list[Place] | None = Field(default=None, min_length=3, max_length=30)
+    places: list[Place] | None = Field(default=None, min_length=2, max_length=30)
 
     _numbers = field_validator('lat', 'lon', 'budget', mode='before')(numeric)
 
@@ -54,7 +54,7 @@ class CreativeQuest(StrictModel):
     title: str = Field(min_length=1, max_length=100)
     intro: str = Field(min_length=1, max_length=400)
     badge_name: str = Field(min_length=1, max_length=80)
-    stops: list[CreativeStop] = Field(min_length=3, max_length=3)
+    stops: list[CreativeStop] = Field(min_length=2, max_length=5)
 
 
 class QuestStop(Place):
@@ -69,7 +69,7 @@ class QuestResponse(StrictModel):
     title: str
     intro: str
     badge_name: str
-    stops: list[QuestStop] = Field(min_length=3, max_length=3)
+    stops: list[QuestStop] = Field(min_length=2, max_length=5)
     warnings: list[str]
     requested_minutes: int
     requested_budget: float
