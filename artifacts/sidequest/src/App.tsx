@@ -304,7 +304,7 @@ function App() {
         </a>
         <div className="topbar-right">
           <span className="demo-chip"><span className="demo-dot" /> {planningError ? 'NO QUEST GENERATED' : questDetails ? `${questDetails.mode.toUpperCase()} QUEST · ${questDetails.places_source.toUpperCase()}` : 'SAMPLE · FIXED STOPS'}</span>
-          <span className="avatar-button" aria-label="SideQuest demo">SQ</span>
+          <span className="avatar-button"><img src={`${import.meta.env.BASE_URL}icon-192.png`} alt="SideQuest" width="33" height="33" /></span>
         </div>
       </header>
 

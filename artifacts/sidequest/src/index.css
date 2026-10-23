@@ -376,6 +376,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .demo-chip { align-items: center; color: #64766c; display: flex; font: 500 9px/1 'DM Mono', monospace; gap: 8px; letter-spacing: .075em; }
 .demo-dot { background: var(--terra); border-radius: 50%; height: 7px; width: 7px; }
 .avatar-button { align-items: center; background: #e6dfcf; border: 0; border-radius: 50%; color: #486357; cursor: default; display: inline-flex; font: 500 11px/1 'DM Mono', monospace; height: 33px; justify-content: center; padding: 0; width: 33px; }
+.avatar-button img { display: block; width: 100%; height: 100%; object-fit: contain; border-radius: inherit; }
 .intro { align-items: center; display: flex; justify-content: space-between; min-height: 253px; padding: 40px 4px 28px; position: relative; }
 .intro-copy { max-width: 720px; }
 .eyebrow, .section-kicker, .planner-kicker { color: #778078; font: 500 9px/1.4 'DM Mono', monospace; letter-spacing: .15em; }
