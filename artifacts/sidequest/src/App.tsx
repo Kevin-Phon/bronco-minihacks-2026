@@ -19,7 +19,7 @@ type Stop = {
   detail: string;
 };
 
-const stops: Stop[] = [
+const portlandStops: Stop[] = [
   {
     id: 1, name: 'Pioneer Courthouse Square', area: 'The city’s living room',
     coordinates: [45.5189, -122.6793], duration: 8, cost: 0,
@@ -57,7 +57,69 @@ const stops: Stop[] = [
   },
 ];
 
-const center: [number, number] = [45.5162, -122.6808];
+type PresetLocation = {
+  label: string;
+  mapLabel: string;
+  mapCenter: [number, number];
+  coordinateLabel: [string, string];
+  stops: Stop[];
+};
+
+const pomonaStops: Stop[] = [
+  {
+    id: 1, name: 'Bronco Student Center', area: 'The campus gathering place',
+    coordinates: [34.0573, -117.8211], duration: 8, cost: 0,
+    challenge: 'Spot a detail in the campus architecture that feels unmistakably Cal Poly Pomona. Compare picks with your crew.',
+    photo: 'Frame your group with a campus landmark in the background.',
+    detail: 'A good quest starts by looking closer.',
+  },
+  {
+    id: 2, name: 'CLA Building', area: 'A campus landmark',
+    coordinates: [34.0586, -117.8208], duration: 10, cost: 0,
+    challenge: 'Look up and find an unexpected shape in the building. Each person gets one guess.',
+    photo: 'Use the building’s lines to make a geometric photo.',
+    detail: 'Look up. The city has been posing for you.',
+  },
+  {
+    id: 3, name: 'University Library', area: 'A quieter corner of campus',
+    coordinates: [34.0562, -117.8220], duration: 12, cost: 0,
+    challenge: 'Find a spot that feels made for a quick reset. Take a quiet minute before moving on.',
+    photo: 'Capture a small detail that makes this corner feel calm.',
+    detail: 'A pause counts as progress.',
+  },
+  {
+    id: 4, name: 'Kellogg House area', area: 'A historic campus stop',
+    coordinates: [34.0544, -117.8163], duration: 15, cost: 6,
+    challenge: 'Notice one old and one new detail nearby. Make up a short story about how they ended up together.',
+    photo: 'Pair a historic detail with something modern in one frame.',
+    detail: 'A tiny treat makes a fine checkpoint.',
+  },
+  {
+    id: 5, name: 'Campus gardens', area: 'A leafy finish line',
+    coordinates: [34.0555, -117.8190], duration: 12, cost: 0,
+    challenge: 'Choose a plant that feels like your quest mascot. Give it a name as a group.',
+    photo: 'Get a final crew shot with your new mascot in the frame.',
+    detail: 'Every adventure deserves a closing scene.',
+  },
+];
+
+const locations: Record<'portland' | 'cal-poly-pomona', PresetLocation> = {
+  portland: {
+    label: 'Downtown Portland',
+    mapLabel: 'central Portland, Oregon',
+    mapCenter: [45.5162, -122.6808],
+    coordinateLabel: ['45°31′N', '122°40′W'],
+    stops: portlandStops,
+  },
+  'cal-poly-pomona': {
+    label: 'Cal Poly Pomona campus',
+    mapLabel: 'Cal Poly Pomona campus',
+    mapCenter: [34.0572, -117.8214],
+    coordinateLabel: ['34°03′N', '117°49′W'],
+    stops: pomonaStops,
+  },
+};
+
 const markerIcon = (number: number, done: boolean) => L.divIcon({
   className: 'leaflet-div-icon',
   html: `<span class="quest-marker ${done ? 'is-done' : ''}">${done ? '✓' : number}</span>`,
@@ -65,7 +127,7 @@ const markerIcon = (number: number, done: boolean) => L.divIcon({
   iconAnchor: [17, 17],
 });
 
-function MapFocus({ selected }: { selected: number }) {
+function MapFocus({ selected, stops }: { selected: number; stops: Stop[] }) {
   const map = useMap();
   const target = stops.find((stop) => stop.id === selected);
   useEffect(() => {
@@ -75,16 +137,17 @@ function MapFocus({ selected }: { selected: number }) {
 }
 
 function App() {
-  const [start, setStart] = useState('Downtown Portland');
+  const [start, setStart] = useState<'portland' | 'cal-poly-pomona'>('cal-poly-pomona');
   const [time, setTime] = useState(60);
   const [budget, setBudget] = useState(10);
-  const [activeStops, setActiveStops] = useState<Stop[]>(stops.slice(0, 5));
+  const [activeStops, setActiveStops] = useState<Stop[]>(locations['cal-poly-pomona'].stops);
   const [completed, setCompleted] = useState<number[]>([]);
   const [revealed, setRevealed] = useState<number[]>([]);
   const [selected, setSelected] = useState(1);
   const [started, setStarted] = useState(false);
   const [status, setStatus] = useState('');
 
+  const location = locations[start];
   const doneCount = completed.length;
   const finished = activeStops.length > 0 && doneCount === activeStops.length;
   const routePoints = useMemo(() => activeStops.map((stop) => stop.coordinates), [activeStops]);
@@ -93,14 +156,25 @@ function App() {
 
   const planQuest = () => {
     const maxStops = time < 40 ? 3 : time < 60 ? 4 : 5;
-    const candidates = stops.filter((stop) => stop.cost <= budget);
+    const candidates = location.stops.filter((stop) => stop.cost <= budget);
     const selectedStops = candidates.slice(0, maxStops);
     setActiveStops(selectedStops);
     setCompleted([]);
     setRevealed([]);
     setSelected(selectedStops[0]?.id ?? 1);
     setStarted(true);
-    setStatus(`Your ${selectedStops.length}-stop demo route is ready around ${start}.`);
+    setStatus(`Your ${selectedStops.length}-stop demo route is ready around ${location.label}.`);
+  };
+
+  const changeLocation = (locationId: 'portland' | 'cal-poly-pomona') => {
+    const nextLocation = locations[locationId];
+    setStart(locationId);
+    setActiveStops(nextLocation.stops);
+    setCompleted([]);
+    setRevealed([]);
+    setSelected(nextLocation.stops[0]?.id ?? 1);
+    setStarted(false);
+    setStatus(`Showing the fixed demo route near ${nextLocation.label}.`);
   };
 
   const toggleDone = (id: number) => {
@@ -119,7 +193,7 @@ function App() {
     setCompleted([]);
     setRevealed([]);
     setStarted(false);
-    setStatus('Quest reset. Your demo stops are ready when you are.');
+    setStatus(`Quest reset. Your demo stops near ${location.label} are ready when you are.`);
   };
 
   return (
@@ -140,12 +214,12 @@ function App() {
           <div className="eyebrow"><span className="eyebrow-line" /> A LITTLE DETOUR, A LOT OF STORY</div>
           <h1>Make today<br /><em>a side quest.</em></h1>
           <p>Good plans are overrated. Pick your window, rally your people, and see what’s just around the corner.</p>
-          <div className="intro-foot"><Sparkles className="mini-stars" size={15} aria-hidden="true" /> Five tiny missions. One very good story.</div>
+          <div className="intro-foot"><Sparkles className="mini-stars" size={15} aria-hidden="true" /> Three to five tiny missions. One very good story.</div>
         </div>
         <div className="intro-stamp" aria-hidden="true">
           <span className="stamp-orbit">GO OUTSIDE · LOOK CLOSER · GO OUTSIDE ·</span>
           <Compass size={48} strokeWidth={1.2} />
-          <span className="stamp-coordinates">45°31′N<br />122°40′W</span>
+          <span className="stamp-coordinates">{location.coordinateLabel[0]}<br />{location.coordinateLabel[1]}</span>
         </div>
       </section>
 
@@ -158,9 +232,14 @@ function App() {
           <label className="field-block" htmlFor="start">
             <span className="field-label"><MapPin size={14} /> START NEAR</span>
             <span className="select-shell">
-              <select id="start" value={start} onChange={(event) => setStart(event.target.value)} data-testid="input-start-location">
-                <option>Downtown Portland</option>
-                <option>Pioneer Courthouse Square</option>
+              <select
+                id="start"
+                value={start}
+                onChange={(event) => changeLocation(event.target.value as 'portland' | 'cal-poly-pomona')}
+                data-testid="input-start-location"
+              >
+                <option value="portland">Downtown Portland</option>
+                <option value="cal-poly-pomona">Cal Poly Pomona campus</option>
               </select>
               <ChevronDown size={15} aria-hidden="true" />
             </span>
@@ -194,18 +273,18 @@ function App() {
           </button>
         </div>
         <p className="fixture-note" data-testid="text-demo-disclaimer">
-          <span className="fixture-pin" /> Demo route: these fixed stops are in central Portland, Oregon. Your start choice shapes the plan label only.
+          <span className="fixture-pin" /> Demo route: these fixed stops are near {location.label}. Choose a preset to move the map; time and budget shape the plan.
         </p>
       </section>
 
       <section className="quest-layout" aria-label="Your neighborhood quest">
         <div className="map-column">
           <div className="section-heading map-heading">
-            <div><span className="section-kicker">THE NEIGHBORHOOD</span><h2>Five stops, one good loop.</h2></div>
+            <div><span className="section-kicker">THE NEIGHBORHOOD</span><h2>{activeStops.length} stops, one good loop.</h2></div>
             <div className="map-legend"><span className="legend-dot" /> DEMO STOPS</div>
           </div>
           <div className="map-frame" data-testid="map-quest">
-            <MapContainer center={center} zoom={15} scrollWheelZoom={false} zoomControl={true} className="quest-map" aria-label="Interactive demo route map of downtown Portland">
+            <MapContainer center={location.mapCenter} zoom={15} scrollWheelZoom={false} zoomControl={true} className="quest-map" aria-label={`Interactive demo route map of ${location.mapLabel}`}>
               <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -222,7 +301,7 @@ function App() {
                   alt={`Stop ${stop.id}: ${stop.name}`}
                 />
               ))}
-              <MapFocus selected={selected} />
+              <MapFocus selected={selected} stops={activeStops} />
             </MapContainer>
             <div className="map-count"><span>{activeStops.length}</span> STOPS <i /> <span>{estimatedTime}</span> MIN WALK + WANDER</div>
           </div>
@@ -250,7 +329,7 @@ function App() {
               <div className="badge-art"><BadgeCheck size={41} strokeWidth={1.45} /><span>FIELD<br />NOTES</span></div>
               <span className="section-kicker">QUEST COMPLETE</span>
               <h3>You made a day of it.</h3>
-              <p>Five stops, a little wandering, and a story that’s yours now. That’s the good stuff.</p>
+              <p>{doneCount} stops, a little wandering, and a story that’s yours now. That’s the good stuff.</p>
               <div className="badge-award"><span className="award-seal"><Flag size={17} /></span><span><b>Neighborhood Scout</b><small>SideQuest field badge · earned today</small></span><CheckCircle2 size={19} /></div>
               <button type="button" className="reset-button" onClick={resetQuest} data-testid="button-reset-quest"><RotateCcw size={15} /> Start over</button>
             </div>
@@ -302,7 +381,7 @@ function App() {
       <footer className="footer">
         <div className="footer-brand"><span className="footer-mark"><Compass size={16} /></span> sidequest.</div>
         <span>Made for the time between plans.</span>
-        <span className="footer-demo">A PORTLAND DEMO ROUTE · FIXED LOCAL FIXTURES</span>
+          <span className="footer-demo">A {location.label.toUpperCase()} DEMO ROUTE · FIXED LOCAL FIXTURES</span>
       </footer>
     </main>
   );
