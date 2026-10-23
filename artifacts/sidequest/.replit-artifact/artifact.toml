@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "SideQuest"
+description = "A neighborhood quest planner that lets people discover small local missions around their current location."
+version = "1.0.0"
+id = "artifacts/sidequest"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20191
+
+[services.development]
+run = "pnpm --filter @workspace/sidequest run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/sidequest", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/sidequest/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20191"
+BASE_PATH = "/"
