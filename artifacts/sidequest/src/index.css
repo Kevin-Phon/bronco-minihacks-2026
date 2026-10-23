@@ -665,3 +665,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
     inset: -1px;
   }
 }
+
+
+.quest-summary { background:#fcf8ef; border:1px solid #d9d3c5; border-radius:8px; margin-top:18px; padding:18px 22px; }
+.quest-summary h2 { color:var(--ink); font:600 21px 'Space Grotesk',sans-serif; margin:0 0 8px; }
+.quest-summary p, .quest-summary details { font-size:12px; line-height:1.6; }
+.quest-summary summary { cursor:pointer; font-weight:600; }
+.quest-summary ul { list-style:disc; padding-left:20px; }
