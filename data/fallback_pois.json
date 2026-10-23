@@ -1,0 +1,4 @@
+{
+  "language": "HTML",
+  "query": "A lightweight modern web app for SideQuest. Form accepts Location (or Pomona coordinates), Time limit, and Budget. Fetches live POIs from Overpass API (amenity, leisure, tourism, historic, shop), balances categories to avoid duplicate types, caches results in localStorage, and includes a quick demo mode fallback."
+}
