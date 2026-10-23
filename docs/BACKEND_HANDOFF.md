@@ -112,8 +112,8 @@ and may need human review; schema checks are not a factual or safety guarantee.
 
 No key is required for basic or synthetic demo mode. Configure the key in `.env`,
 restart, and use scripts/smoke_test.py --live-request with your teammate's real data.
-Groq generation was previously verified with supplied test places. A full live
-OSM-to-AI request remains unverified because public Overpass requests timed out.
+Groq generation was verified with saved real CPP OSM places. Fresh live
+Overpass lookup remains unverified because the public endpoints timed out.
 
 ## Model availability update
 The account model list excludes the original Llama choice. Qwen 3.8 27B is the working default, with Apache-2.0 model terms. GROQ_MODEL can override it; health and successful quest metadata report the configured model. Update model credits if changing it.
@@ -164,8 +164,7 @@ Source is `snapshot`, never `live` or `demo`. It expires 24 hours after retrieva
 requires the request center within 100 m of the preset, and still filters places
 by the requested radius. Preserve its timestamped warning in the frontend.
 Portland and arbitrary locations still need a working live provider or their own
-matching cache. The integration app uses backend port 5051 during local testing;
-normal default configuration remains port 5050.
+matching cache. The final combined app uses Flask port 5050 and Vite port 5173 as documented in the root README.
 
 Failed generation now clears old sample stops and shows an alert by the planner.
 A failed request cannot leave a fixed sample route looking like a new result.

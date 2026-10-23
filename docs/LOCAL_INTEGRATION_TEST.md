@@ -106,3 +106,13 @@ A pnpm dependency-state check requested module-directory replacement after the
 frontend manifest changed. It was aborted without removal; existing dependencies
 were retained, and direct Node/TypeScript/Vite commands verified the merge.
 A fresh dependency install in the main VS Code checkout is checked separately.
+
+
+Final team-publication verification (2026-10-23):
+- Fresh frozen-lockfile install completed in Desktop/MiniHack with lifecycle scripts skipped and no module-directory deletion.
+- Actual VS Code workspace is on the integration branch, with Flask 5050 and Vite 5173 running from that checkout.
+- 73 Python tests, 6 frontend contract tests and 3 JavaScript helper tests pass; TypeScript and production build pass.
+- Branch-history credential-pattern scan: no findings. No .env, virtual environment, Node dependencies or local cache tracked. The user's LICENSE whitespace edit remains unstaged and excluded.
+- Independent final review found no important integration blockers.
+- Final browser: CPP / 45 minutes / $0 generated live AI text over real saved OSM data, displayed AI QUEST · SNAPSHOT, and automatically opened the preserved Map & quests tab.
+- Latest main base verified as 0d01405 before publication. Public Overpass availability remains an explicitly documented limitation.
