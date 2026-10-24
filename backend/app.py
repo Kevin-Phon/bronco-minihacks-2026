@@ -6,13 +6,14 @@ from dotenv import load_dotenv
 from pydantic import ValidationError
 from werkzeug.exceptions import HTTPException
 from .places import get_places, PlacesUnavailable, PlacesBatch
+from .geocoding import geocode_location, LocationNotFound, LocationUnavailable
 from .quest_ai import GroqCompletion, NoSuitablePlaces, generate_quest, basic_content, assemble, MODEL
 from .schemas import QuestRequest, Place
 
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def create_app(config=None, *, places_provider=None, completion=None):
+def create_app(config=None, *, places_provider=None, completion=None, geocode_provider=None):
     load_dotenv(ROOT / '.env', override=False)
     app = Flask(__name__)
     app.config.update(MAX_CONTENT_LENGTH=65536, GROQ_API_KEY=os.getenv('GROQ_API_KEY', '').strip(),
@@ -20,6 +21,7 @@ def create_app(config=None, *, places_provider=None, completion=None):
     if config:
         app.config.update(config)
     provider = places_provider or get_places
+    geocoder = geocode_provider or geocode_location
 
     def error(code, message, status):
         return jsonify(error={'code':code,'message':message}), status
@@ -35,6 +37,22 @@ def create_app(config=None, *, places_provider=None, completion=None):
     @app.get('/api/health')
     def health():
         return jsonify(status='ok', ai_configured=bool(app.config['GROQ_API_KEY']), model=app.config['GROQ_MODEL'])
+
+    @app.post('/api/geocode')
+    def geocode():
+        raw = request.get_json()
+        if not isinstance(raw, dict) or not isinstance(raw.get('location'), str):
+            return error('invalid_location', 'Send a location string of 1 to 200 characters.', 422)
+        location = raw['location'].strip()
+        if not location or len(location) > 200:
+            return error('invalid_location', 'Send a location string of 1 to 200 characters.', 422)
+        try:
+            result = geocoder(location)
+        except LocationNotFound:
+            return error('location_not_found', 'No matching location was found. Try an address, city, or landmark.', 422)
+        except LocationUnavailable:
+            return error('location_unavailable', 'The location lookup is unavailable. Try again in a moment.', 503)
+        return jsonify(result)
 
     @app.post('/api/quest')
     @app.post('/api/places')

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { requestQuest, toStops } from './quest-api.ts';
+import { geocodeLocation, requestQuest, toStops } from './quest-api.ts';
 
 const quest = {
   mode:'ai', places_source:'live', model:'test-model', title:'Test quest', intro:'Look closer.',
@@ -54,4 +54,24 @@ test('rejects invalid coordinates and duplicated stop IDs before mapping',async(
 test('real cached campus snapshot preserves its distinct source label',async()=>{
   const transport:typeof fetch=async()=>Response.json({...quest,places_source:'snapshot'});
   assert.equal((await requestQuest(preferences,false,transport)).places_source,'snapshot');
+});
+
+test('geocodes a custom location and validates the returned coordinates',async()=>{
+  const transport:typeof fetch=async(input,options)=>{
+    assert.equal(input,'/api/geocode');
+    assert.deepEqual(JSON.parse(String(options?.body)),{location:'Powell’s City of Books'});
+    return Response.json({latitude:45.5231,longitude:-122.6765,label:'Powell’s City of Books, Portland'});
+  };
+  assert.deepEqual(await geocodeLocation('  Powell’s City of Books  ',transport),{
+    latitude:45.5231,longitude:-122.6765,label:'Powell’s City of Books, Portland',
+  });
+});
+
+test('rejects empty, unmatched, and invalid custom locations',async()=>{
+  await assert.rejects(geocodeLocation('   '),/Enter a location/);
+  await assert.rejects(geocodeLocation('x'.repeat(201)),/200 characters or fewer/);
+  const noResults:typeof fetch=async()=>Response.json({error:{message:'No matching location was found.'}},{status:422});
+  await assert.rejects(geocodeLocation('Nowhere',noResults),/No matching location/);
+  const invalidCoordinates:typeof fetch=async()=>Response.json({latitude:91,longitude:-122,label:'Invalid place'});
+  await assert.rejects(geocodeLocation('Invalid place',invalidCoordinates),/invalid coordinates/);
 });
