@@ -151,6 +151,8 @@ function App() {
   const [status, setStatus] = useState('');
   const [questDetails, setQuestDetails] = useState<QuestResponse | null>(null);
   const [planningError, setPlanningError] = useState('');
+  const [locationError, setLocationError] = useState('');
+
 
   const currentMapCenter = useMemo<[number, number]>(
     () => currentCoordinates
@@ -176,19 +178,26 @@ function App() {
   const estimatedCost = activeStops.reduce((sum, stop) => sum + (stop.cost ?? 0), 0);
 
   const requestCurrentLocation = () => {
+    setLocationError('');
+
     if (!navigator.geolocation) {
-      setStatus('Location is not available in this browser. Choose a preset neighborhood instead.');
+      const message =
+        'Location is not available in this browser. Choose a preset neighborhood instead.';
+      setLocationError(message);
+      setStatus(message);
       return;
     }
 
     setIsRequestingLocation(true);
     setStatus('Waiting for location permission…');
+
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
         const nextCoordinates = {
           latitude: coords.latitude,
           longitude: coords.longitude,
         };
+
         setCurrentCoordinates(nextCoordinates);
         setStart('current');
         setActiveStops([]);
@@ -199,30 +208,49 @@ function App() {
         setIsGeneratedQuest(false);
         setQuestDetails(null);
         setIsRequestingLocation(false);
-        setStatus('Location ready. Tap “Find my quest” to send it to the quest service.');
+        setLocationError('');
+        setStatus(
+          'Location ready. Tap “Find my quest” to send it to the quest service.',
+        );
       },
       (error) => {
         setIsRequestingLocation(false);
+
+        let message: string;
+
         if (error.code === 1) {
-          setStatus('Location permission was denied. Choose a preset neighborhood or allow location access in your browser.');
+          message =
+            'Location permission was denied. Choose a preset neighborhood or allow location access in your browser.';
         } else if (error.code === 2) {
-          setStatus('Your location could not be determined. Try again or choose a preset neighborhood.');
+          message =
+            'Your location could not be determined. Try again or choose a preset neighborhood.';
         } else {
-          setStatus('The location request timed out. Try again or choose a preset neighborhood.');
+          message =
+            'The location request timed out. Try again or choose a preset neighborhood.';
         }
+
+        setLocationError(message);
+        setStatus(message);
       },
-      { enableHighAccuracy: false, maximumAge: 60_000, timeout: 15_000 },
+      {
+        enableHighAccuracy: false,
+        maximumAge: 60_000,
+        timeout: 15_000,
+      },
     );
   };
 
   const planQuest = async (demo = false) => {
     if (start === 'current' && !currentCoordinates && !demo) {
-      setStatus('Choose your current location first, or select a preset.');
+      const message = 'Choose your current location first, or select a preset.';
+      setLocationError(message);
+      setStatus(message);
       return;
     }
     const [lat, lon] = location.mapCenter;
     setIsPlanning(true);
     setPlanningError('');
+    setLocationError('');
     setStatus(demo ? 'Loading the synthetic backend demo…' : 'Finding nearby places and writing your quest…');
     try {
       const result = await requestQuest({lat, lon, minutes:time, budget}, demo);
@@ -257,6 +285,16 @@ function App() {
 
   const changeLocation = (locationId: StartLocation) => {
     if (locationId === 'current') {
+      setStart('current');
+      setCurrentCoordinates(null);
+      setActiveStops([]);
+      setCompleted([]);
+      setRevealed([]);
+      setSelected(0);
+      setStarted(false);
+      setIsGeneratedQuest(false);
+      setQuestDetails(null);
+      setPlanningError('');
       requestCurrentLocation();
       return;
     }
@@ -272,6 +310,7 @@ function App() {
     setIsGeneratedQuest(false);
     setQuestDetails(null);
     setPlanningError('');
+    setLocationError('');
     setStatus(`Showing the fixed demo route near ${nextLocation.label}.`);
   };
 
@@ -304,7 +343,7 @@ function App() {
         </a>
         <div className="topbar-right">
           <span className="demo-chip"><span className="demo-dot" /> {planningError ? 'NO QUEST GENERATED' : questDetails ? `${questDetails.mode.toUpperCase()} QUEST · ${questDetails.places_source.toUpperCase()}` : 'SAMPLE · FIXED STOPS'}</span>
-          <span className="avatar-button"><img src={`${import.meta.env.BASE_URL}icon-192.png`} alt="SideQuest" width="33" height="33" /></span>
+          <span className="avatar-button" aria-label="SideQuest demo">SQ</span>
         </div>
       </header>
 
@@ -403,9 +442,22 @@ function App() {
             {isPlanning ? 'Finding quests…' : started ? 'Replan my quest' : 'Find my quest'} <ArrowRight size={17} />
           </button>
         </div>
-        {planningError && <p role="alert" data-testid="error-quest-generation" style={{color:'#8b3022',border:'1px solid currentColor',padding:'12px',borderRadius:'8px'}}>
-          <strong>Could not create a quest.</strong> {planningError} No new stops were generated. For the campus backup, choose Cal Poly Pomona campus.
-        </p>}
+        {(planningError || locationError) && (
+          <p
+            className="planner-error"
+            role="alert"
+            data-testid="error-quest-generation"
+          >
+            <strong>
+              {locationError
+                ? 'Could not get your location.'
+                : 'Could not create a quest.'}
+            </strong>{' '}
+            {locationError || planningError}
+            {planningError &&
+              ' No new stops were generated. For the campus backup, choose Cal Poly Pomona campus.'}
+          </p>
+        )}
         <p className="fixture-note" data-testid="text-demo-disclaimer">
           <span className="fixture-pin" /> {start === 'current'
             ? 'Your coordinates go to the quest backend only after you tap “Find my quest”.'
