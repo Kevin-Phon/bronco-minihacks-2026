@@ -665,3 +665,81 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .quest-summary p, .quest-summary details { font-size:14px; line-height:1.6; }
 .quest-summary summary { cursor:pointer; font-weight:600; }
 .quest-summary ul { list-style:disc; padding-left:20px; }
+
+/* Final readability overrides */
+.app-shell {
+  color: #172d26 !important;
+}
+
+.app-shell p,
+.app-shell label,
+.app-shell select,
+.app-shell button {
+  color: #243b32;
+}
+
+.app-shell .intro-copy > p {
+  color: #263f34 !important;
+  font-size: 16px !important;
+}
+
+.app-shell .intro-foot {
+  color: #294f40 !important;
+  font-size: 13px !important;
+}
+
+.app-shell .planner-note,
+.app-shell .fixture-note,
+.app-shell .planner-status,
+.app-shell .side-note p,
+.app-shell .live-status {
+  color: #40574b !important;
+  font-size: 12px !important;
+}
+
+.app-shell .field-label,
+.app-shell .eyebrow,
+.app-shell .section-kicker,
+.app-shell .planner-kicker {
+  color: #40574b !important;
+  font-size: 10px !important;
+}
+
+.app-shell .select-shell select {
+  color: #172d26 !important;
+  font-size: 14px !important;
+  font-weight: 600;
+}
+
+.app-shell .workspace-tab-copy strong {
+  color: #172d26 !important;
+  font-size: 14px !important;
+}
+
+.app-shell .workspace-tab-copy small {
+  color: #40574b !important;
+  font-size: 11px !important;
+}
+
+.app-shell .stop-title {
+  color: #172d26 !important;
+  font-size: 14px !important;
+}
+
+.app-shell .stop-area,
+.app-shell .challenge-copy,
+.app-shell .photo-prompt {
+  color: #40574b !important;
+}
+
+.app-shell .stop-area {
+  font-size: 11px !important;
+}
+
+.app-shell .challenge-copy {
+  font-size: 13px !important;
+}
+
+.app-shell .photo-prompt {
+  font-size: 12px !important;
+}
