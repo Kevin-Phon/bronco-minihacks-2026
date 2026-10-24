@@ -338,7 +338,7 @@ function App() {
       <header className="topbar">
         <a className="brand" href="/" aria-label="SideQuest home" data-testid="link-home">
           <span className="brand-mark"><Compass size={21} strokeWidth={2.1} /></span>
-          <span>sidequest<span className="brand-period">.</span></span>
+          <span>SideQuest<span className="brand-period">.</span></span>
         </a>
         <div className="topbar-right">
           <span className="demo-chip"><span className="demo-dot" /> {planningError ? 'NO QUEST GENERATED' : questDetails ? `${questDetails.mode.toUpperCase()} QUEST · ${questDetails.places_source.toUpperCase()}` : 'SAMPLE · FIXED STOPS'}</span>
