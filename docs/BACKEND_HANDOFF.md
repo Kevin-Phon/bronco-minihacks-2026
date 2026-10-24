@@ -97,6 +97,21 @@ Errors have `{"error":{"code":"...","message":"..."}}`:
 No payload needed. Returns synthetic sample stops immediately and never calls Groq
 or Overpass. This is for connecting/testing the UI, not an unlabeled live-demo backup.
 
+### POST /api/geocode
+
+Resolve a custom starting location before requesting a quest:
+
+```json
+{"location":"Cal Poly Pomona"}
+```
+
+The location string must contain 1–200 characters. A successful response includes
+validated `latitude`, `longitude`, and a display `label`. The server looks up
+locations with OpenStreetMap Nominatim; send the text only when the user requests
+a quest, and then use the returned coordinates with `POST /api/quest`.
+Unmatched locations return 422 `location_not_found`; lookup failures return 503
+`location_unavailable`.
+
 ### GET /api/health
 
 Returns status, model and ai_configured boolean. The boolean checks key presence,
