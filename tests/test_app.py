@@ -22,6 +22,63 @@ def test_health_reports_only_key_presence(client):
     assert r.json['ai_configured'] is False
 
 
+def test_geocode_endpoint_validates_and_resolves_custom_location():
+    def geocoder(location):
+        assert location == 'Cal Poly Pomona'
+        return {'latitude':34.0572,'longitude':-117.8214,'label':'Cal Poly Pomona'}
+    client=create_app({'TESTING':True},geocode_provider=geocoder).test_client()
+    r=client.post('/api/geocode',json={'location':' Cal Poly Pomona '})
+    assert r.status_code == 200
+    assert r.json == {'latitude':34.0572,'longitude':-117.8214,'label':'Cal Poly Pomona'}
+
+
+@pytest.mark.parametrize('data', [[], {}, {'location':'  '}, {'location':'x'*201}])
+def test_geocode_rejects_invalid_input(data):
+    def never(location):
+        pytest.fail('Invalid location reached geocoding provider')
+    client=create_app({'TESTING':True},geocode_provider=never).test_client()
+    r=client.post('/api/geocode',json=data)
+    assert r.status_code == 422
+    assert r.json['error']['code'] == 'invalid_location'
+
+
+def test_geocode_reports_missing_and_unavailable_locations():
+    from backend.geocoding import LocationNotFound, LocationUnavailable
+    for exception, status, code in [
+        (LocationNotFound,422,'location_not_found'),
+        (LocationUnavailable,503,'location_unavailable'),
+    ]:
+        def fail(_location, exception=exception):
+            raise exception()
+        client=create_app({'TESTING':True},geocode_provider=fail).test_client()
+        r=client.post('/api/geocode',json={'location':'Unknown'})
+        assert r.status_code == status
+        assert r.json['error']['code'] == code
+
+
+def test_nominatim_geocoder_uses_identified_request_and_validates_result(monkeypatch):
+    from backend import geocoding
+
+    def get(url, *, params, headers, timeout):
+        assert url == geocoding.NOMINATIM_URL
+        assert params == {'format':'jsonv2','limit':1,'q':'Cal Poly Pomona'}
+        assert headers['User-Agent'].startswith('SideQuest-MiniHacks/')
+        assert timeout == 10
+
+        class Response:
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return [{'lat':'34.0572','lon':'-117.8214','display_name':'Cal Poly Pomona'}]
+        return Response()
+
+    monkeypatch.setattr(geocoding.httpx, 'get', get)
+    assert geocoding.geocode_location('Cal Poly Pomona') == {
+        'latitude':34.0572,'longitude':-117.8214,'label':'Cal Poly Pomona',
+    }
+
+
 def test_candidates_allow_testing_before_overpass_adapter(client):
     r=client.post('/api/quest', json={**PREFS,'places':PLACES})
     assert r.status_code == 200

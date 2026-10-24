@@ -400,6 +400,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .select-shell { align-items: center; background: var(--cream); border: 1px solid #d9d2c3; border-radius: 5px; display: flex; height: 42px; padding: 0 11px; position: relative; }
 .select-shell select { appearance: none; background: transparent; border: 0; color: var(--ink); cursor: pointer; font-size: 12px; height: 100%; outline: none; width: 100%; }
 .select-shell svg { color: #7d887e; flex: 0 0 auto; pointer-events: none; }
+.custom-location-field { display: flex; flex-direction: column; gap: 8px; }
+.custom-location-field input { background: var(--cream); border: 1px solid #d9d2c3; border-radius: 5px; color: var(--ink); font: 12px 'DM Sans', sans-serif; height: 42px; min-width: 0; outline-color: var(--terra); padding: 0 11px; }
+.custom-location-field input::placeholder { color: #879087; }
 .plan-button { align-items: center; background: var(--terra); border: 1px solid var(--terra); border-radius: 5px; color: #fffaf0; cursor: pointer; display: flex; font-size: 12px; font-weight: 700; gap: 19px; height: 42px; justify-content: center; padding: 0 16px; transition: background .18s, transform .18s; white-space: nowrap; }
 .plan-button:hover { background: #c96240; transform: translateY(-1px); }
 .fixture-note { align-items: center; color: #788078; display: flex; font-size: 9px; gap: 7px; margin: 12px 0 0; }
