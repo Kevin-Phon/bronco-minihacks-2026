@@ -2,7 +2,7 @@
 
 **Turn any afternoon into an adventure.** SideQuest uses real OpenStreetMap data and an open-weight AI model to plan a short walking quest around you: 2 to 5 real nearby stops that fit your time and budget, a small challenge and photo prompt at each one, and a badge when you finish.
 
-Built during **Bronco Minihacks 2026** at Cal Poly Pomona (October 23, 2026) by team **TODO: Team Name**.
+Built during **Bronco Minihacks 2026** at Cal Poly Pomona (October 23, 2026) by team **Side Questers**.
 
 > **Tracks:** Travel/Exploration · MLH Best Open-Source AI Project
 
