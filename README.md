@@ -103,9 +103,10 @@ Run the tests with `pip install -r requirements-dev.txt` and then `pytest`.
 - [Qwen](https://huggingface.co/Qwen) open-weight model, served through [Groq](https://groq.com)
 - [React](https://react.dev), [Vite](https://vitejs.dev), [TypeScript](https://www.typescriptlang.org), [Tailwind CSS](https://tailwindcss.com), [Leaflet](https://leafletjs.com), [react-leaflet](https://react-leaflet.js.org), [wouter](https://github.com/molefrog/wouter), [lucide-react](https://lucide.dev)
 - [Flask](https://flask.palletsprojects.com), [Pydantic](https://docs.pydantic.dev), [httpx](https://www.python-httpx.org), [python-dotenv](https://github.com/theskumar/python-dotenv), [Groq Python SDK](https://github.com/groq/groq-python), [pytest](https://pytest.org), [Vitest](https://vitest.dev)
+- [Replit](https://replit.com) for generating the initial frontend skeleton
 
 ## 🤝 AI use disclosure
-We used AI coding assistants (Grok Bot; TODO: add any others your team used) to help brainstorm, plan, write and debug code, and draft documentation. All code was written during the event, as allowed by the Bronco Minihacks rules.
+We used AI coding assistants (Grok Bot and Replit Agent; TODO: add any others your team used) to help brainstorm, plan, write and debug code, and draft documentation. The initial frontend skeleton (React + Vite layout and components) was generated with [Replit](https://replit.com) during the event and then customized by our team. All code was written during the event, as allowed by the Bronco Minihacks rules.
 
 ## 📄 License
 SideQuest is open source under the [MIT License](LICENSE). Third-party data, libraries and models keep their own licenses (OpenStreetMap data is under the ODbL).
