@@ -378,7 +378,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .avatar-button { align-items: center; background: #e6dfcf; border: 0; border-radius: 50%; color: #486357; cursor: default; display: inline-flex; font: 500 11px/1 'DM Mono', monospace; height: 33px; justify-content: center; padding: 0; width: 33px; }
 .avatar-button img { display: block; width: 100%; height: 100%; object-fit: contain; border-radius: inherit; }
 .intro { align-items: center; display: flex; justify-content: space-between; min-height: 253px; padding: 40px 4px 28px; position: relative; }
-.intro-copy { max-width: 720px; }
+.intro-copy { flex: 1 1 0; min-width: 0; max-width: 720px; }
 .eyebrow, .section-kicker, .planner-kicker { color: #778078; font: 500 9px/1.4 'DM Mono', monospace; letter-spacing: .15em; }
 .eyebrow { align-items: center; display: flex; gap: 9px; }
 .eyebrow-line { background: var(--terra); display: inline-block; height: 1px; width: 23px; }
@@ -387,10 +387,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .intro-copy > p { color: #68756d; font-size: 14px; line-height: 1.65; margin: 0; max-width: 510px; }
 .intro-foot { align-items: center; color: var(--moss); display: flex; font-size: 11px; font-weight: 600; gap: 8px; margin-top: 18px; }
 .mini-stars { color: var(--terra); font-size: 18px; line-height: .7; }
-.intro-stamp { align-items: center; border: 1px dashed #c5a88f; border-radius: 50%; color: var(--terra); display: flex; flex-direction: column; height: 132px; justify-content: center; margin-right: 5%; position: relative; transform: rotate(9deg); width: 132px; }
-.intro-stamp::before { border: 1px solid #e7cbbb; border-radius: inherit; content: ''; inset: 6px; position: absolute; }
-.stamp-orbit { color: #98664f; font: 500 7px 'DM Mono', monospace; letter-spacing: .05em; position: absolute; top: 17px; }
-.stamp-coordinates { color: var(--moss); font: 8px/1.45 'DM Mono', monospace; margin-top: 4px; text-align: center; }
+.intro-logo { flex: 0 1 480px; min-width: 0; margin-left: 32px; }
+.intro-logo img { display: block; width: 100%; height: auto; border-radius: 12px; }
 .planner { background: #ebe4d6; border: 1px solid #ded5c2; border-radius: 10px; padding: 18px 22px 12px; }
 .planner-title { align-items: center; display: flex; justify-content: space-between; margin-bottom: 14px; }
 .planner-kicker { color: #52665b; }
@@ -402,6 +400,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .select-shell { align-items: center; background: var(--cream); border: 1px solid #d9d2c3; border-radius: 5px; display: flex; height: 42px; padding: 0 11px; position: relative; }
 .select-shell select { appearance: none; background: transparent; border: 0; color: var(--ink); cursor: pointer; font-size: 12px; height: 100%; outline: none; width: 100%; }
 .select-shell svg { color: #7d887e; flex: 0 0 auto; pointer-events: none; }
+.custom-location-field { display: flex; flex-direction: column; gap: 8px; }
+.custom-location-field input { background: var(--cream); border: 1px solid #d9d2c3; border-radius: 5px; color: var(--ink); font: 12px 'DM Sans', sans-serif; height: 42px; min-width: 0; outline-color: var(--terra); padding: 0 11px; }
+.custom-location-field input::placeholder { color: #879087; }
 .plan-button { align-items: center; background: var(--terra); border: 1px solid var(--terra); border-radius: 5px; color: #fffaf0; cursor: pointer; display: flex; font-size: 12px; font-weight: 700; gap: 19px; height: 42px; justify-content: center; padding: 0 16px; transition: background .18s, transform .18s; white-space: nowrap; }
 .plan-button:hover { background: #c96240; transform: translateY(-1px); }
 .fixture-note { align-items: center; color: #788078; display: flex; font-size: 9px; gap: 7px; margin: 12px 0 0; }
@@ -502,7 +503,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   .app-shell { padding-left: 4vw; padding-right: 4vw; }
   .quest-layout { gap: 25px; grid-template-columns: minmax(0, 1.35fr) minmax(300px, .9fr); }
   .map-frame { height: clamp(420px, 50vw, 540px); }
-  .intro-stamp { margin-right: 1%; }
   .planner-fields { gap: 9px; }
   .plan-button { gap: 9px; padding: 0 12px; }
 }
@@ -511,14 +511,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   .topbar { height: 62px; }
   .demo-chip { font-size: 8px; }
   .topbar-right { gap: 10px; }
-  .intro { min-height: unset; padding: 32px 1px 26px; }
+  .intro { align-items: flex-start; flex-direction: column; gap: 24px; min-height: unset; padding: 32px 1px 26px; }
+  .intro-logo { flex: none; width: min(100%, 380px); margin-left: 0; }
   .intro h1 { font-size: clamp(46px, 12vw, 63px); }
   .intro-copy > p { font-size: 12px; max-width: 370px; }
-  .intro-stamp { height: 88px; margin-right: 0; width: 88px; }
-  .intro-stamp svg { height: 32px; width: 32px; }
-  .intro-stamp::before { inset: 4px; }
-  .stamp-orbit { font-size: 5px; top: 11px; }
-  .stamp-coordinates { font-size: 6px; }
   .planner { padding: 16px 14px 11px; }
   .workspace-tabs { display: grid; gap: 7px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .workspace-tab { gap: 8px; min-height: 49px; padding: 8px 9px; }
@@ -541,11 +537,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 }
 @media (max-width: 390px) {
   .app-shell { padding: 0 13px; }
-  .intro-stamp { height: 74px; width: 74px; }
   .workspace-tab { gap: 6px; padding-left: 7px; padding-right: 7px; }
-  .intro-stamp svg { height: 27px; width: 27px; }
-  .stamp-orbit { font-size: 4px; }
-  .stamp-coordinates { font-size: 5px; }
   .section-heading h2 { font-size: 18px; }
   .map-frame { height: 340px; }
   .quest-totals { gap: 7px; font-size: 8px; }
