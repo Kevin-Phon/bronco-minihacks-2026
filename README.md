@@ -86,10 +86,10 @@ Run the tests with `pip install -r requirements-dev.txt` and then `pytest`.
 ## 👥 Team
 | Name | Role |
 |---|---|
-| TODO | AI and backend |
-| TODO | Places data |
-| TODO | Frontend |
-| TODO | Design, docs, demo and pitch |
+| Kevin | AI and backend |
+| David | Places data |
+| Calvin | Frontend |
+| Sevren | Design, docs, demo and pitch |
 
 ## 🧭 What's next
 - Real price data so the budget filters places more precisely
@@ -106,7 +106,7 @@ Run the tests with `pip install -r requirements-dev.txt` and then `pytest`.
 - [Replit](https://replit.com) for generating the initial frontend skeleton
 
 ## 🤝 AI use disclosure
-We used AI coding assistants (Grok Bot and Replit Agent; TODO: add any others your team used) to help brainstorm, plan, write and debug code, and draft documentation. The initial frontend skeleton (React + Vite layout and components) was generated with [Replit](https://replit.com) during the event and then customized by our team. All code was written during the event, as allowed by the Bronco Minihacks rules.
+We used AI coding assistants (Grok, Replit, Github Copilot, Codex) to help brainstorm, plan, write and debug code, and draft documentation. The initial frontend skeleton (React + Vite layout and components) was generated with [Replit](https://replit.com) during the event and then customized by our team. All code was written during the event, as allowed by the Bronco Minihacks rules.
 
 ## 📄 License
 SideQuest is open source under the [MIT License](LICENSE). Third-party data, libraries and models keep their own licenses (OpenStreetMap data is under the ODbL).
